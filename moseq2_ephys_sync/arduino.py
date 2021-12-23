@@ -63,6 +63,7 @@ def get_col_info(spec):
     return arduino_colnames, arduino_dtypes
 
 
+# TODO: change this so that the load arduino functionality is taken from moseq fo -- OR just load the first five columns
 
 def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
 
