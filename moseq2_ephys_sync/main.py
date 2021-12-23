@@ -63,7 +63,6 @@ leds_to_use=[1,2,3,4]):
 
 
     # Detect num leds
-    assert '4' in leds_to_use, "Code expects that last LED is LED 4 (switching every interval)" 
     num_leds = len(leds_to_use)
 
 
@@ -90,15 +89,17 @@ leds_to_use=[1,2,3,4]):
     print('Dealing with first souce...')
     # Deal with first source
     if first_source == 'ttl':
-        first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
+        first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, ephys_fs)
     elif first_source == 'mkv':
         assert not (led_loc and s1_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
+        assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
         first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_extraction)
     elif first_source == 'arduino' or first_source=='txt':
         first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
     elif first_source == 'basler':
         first_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s1_led_rois_from_file, overwrite_models)
     elif first_source == 'avi':
+        assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
         first_source_led_codes = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_extraction=overwrite_extraction)
     else:
         raise RuntimeError(f'First source keyword {first_source} not recognized')
@@ -107,7 +108,7 @@ leds_to_use=[1,2,3,4]):
     print('Dealing with second souce...')
     # Deal with second source
     if second_source == 'ttl':
-        second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
+        second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, ephys_fs)
     elif second_source == 'mkv':
         assert not (led_loc and s2_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
         second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s2_led_rois_from_file, overwrite_extraction)
@@ -142,7 +143,7 @@ leds_to_use=[1,2,3,4]):
                                   second_source_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
 
-    pdb.set_trace()
+    # pdb.set_trace()
 
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 
