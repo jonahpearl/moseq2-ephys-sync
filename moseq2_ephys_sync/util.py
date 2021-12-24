@@ -24,7 +24,7 @@ def find_file_through_glob_and_symlink(path, pattern):
 
 
     # If no files found, maybe we have to follow a sym-linked depth-video back to the raw data directory
-    if len(files) == 0:    
+    if len(files) == 0 and ('mkv' in pattern or 'avi' in pattern):    
         try_avi = glob(os.path.join(path,f'*depth.avi'))[0]
         if len(try_avi) == 0:
             try_mkv = glob(os.path.join(path,f'*depth.mkv'))[0]
