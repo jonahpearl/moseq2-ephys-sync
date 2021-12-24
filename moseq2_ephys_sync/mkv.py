@@ -39,7 +39,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
     else:
         print('Loading mkv timestamps de novo...')
         ## get info on the depth file; we'll use this to see how many frames we have
-        info,timestamps = get_mkv_info(depth_path,stream=stream_names['DEPTH'])
+        info,timestamps = get_mkv_info(depth_path,stream=stream_names['DEPTH'])  # timestamps already in seconds
 
         ## save info and timestamps:
         timestamps = pd.DataFrame(timestamps)
@@ -124,7 +124,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
     mkv_led_codes = np.asarray(mkv_led_codes)
     print('Converted.')
 
-    return mkv_led_codes
+    return mkv_led_codes, timestamps
 
 
 ### MKV HELPER FUNCTIONS ###

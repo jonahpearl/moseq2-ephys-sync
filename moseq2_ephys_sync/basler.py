@@ -86,7 +86,7 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_c
     basler_led_codes, latencies = sync.events_to_codes(basler_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))  
     basler_led_codes = np.asarray(basler_led_codes)
 
-    return basler_led_codes
+    return basler_led_codes, timestamps
 
 
 ### Basler HELPER FUNCTIONS ###

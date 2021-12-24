@@ -32,12 +32,12 @@ def arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_inte
         led_list.append(ino_data[led_names[int(idx) - 1]])
 
     ino_events = list_to_events(ino_timestamps, led_list, tskip=timestamp_jump_skip_event_threshhold)
-    ino_average_fs = 1/(np.mean(np.diff(ino_timestamps)))*1000  # fs = sampling freq in Hz
+    # ino_average_fs = 1/(np.mean(np.diff(ino_timestamps)))*1000  # fs = sampling freq in Hz
     ino_codes, _ = sync.events_to_codes(ino_events, nchannels=num_leds, minCodeTime=(led_blink_interval-1)*1000)  # I think as long as the column 'timestamps' in events and the minCodeTime are in the same units, it's fine (for ephys, its nsamples, for arudino, it's ms)
     ino_codes = np.asarray(ino_codes)
-    ino_codes[:,0] = ino_codes[:,0] / 1000  ## convert to seconds
+    ino_codes[:,0] = ino_codes[:,0] / 1000  # convert to seconds
 
-    return ino_codes, ino_average_fs
+    return ino_codes, ino_timestamps/1000  # convert to seconds
 
 
 
@@ -93,7 +93,9 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
         'dac': 'float64',
         'mouseROI': 'int8',
         'odor_ttl': 'int8',
-        'wheel': 'int64'    
+        'wheel': 'int64',
+        'dac_value': 'float64',
+        'dac': 'float64'    
     }
 
     # Find file

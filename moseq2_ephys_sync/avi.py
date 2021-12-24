@@ -115,6 +115,6 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
     avi_led_codes = np.asarray(avi_led_codes)
     print('Converted.')
 
-    return avi_led_codes
+    return avi_led_codes, timestamps/1e6
 
 
