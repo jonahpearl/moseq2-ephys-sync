@@ -22,11 +22,16 @@ def ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs, l
     ephys_timestamps -= continuous_timestamps[0]   # subract the first timestamp from all TTLs; this way continuous ephys can safely start at 0 samples or seconds
     ephys_timestamps = ephys_timestamps / ephys_fs
 
-    ttl_channels = [-4,-3,-2,-1,1,2,3,4]
+    #ttl_channels = [-4,-3,-2,-1,1,2,3,4]
+    ttl_channels = leds_to_use + [-j for j in leds_to_use]
+
     print('Assuming sync leds in ttl channels 1-4...')
     ttl_bool = np.isin(channels, ttl_channels)
     ephys_events = np.vstack([ephys_timestamps[ttl_bool], abs(channels[ttl_bool])-1, np.sign(channels[ttl_bool])]).T
     codes, ephys_latencies = sync.events_to_codes(ephys_events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))
     codes = np.asarray(codes)
+
+
+
 
     return codes
