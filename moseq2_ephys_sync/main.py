@@ -63,7 +63,7 @@ leds_to_use=[1,2,3,4]):
 
 
     # Detect num leds
-    assert '4' in leds_to_use, "Code expects that last LED is LED 4 (switching every interval)" 
+    # assert '4' in leds_to_use, "Code expects that last LED is LED 4 (switching every interval)" 
     num_leds = len(leds_to_use)
 
 
