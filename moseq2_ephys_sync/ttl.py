@@ -4,11 +4,11 @@ from glob import glob
 import sync
 import pdb
 
-def ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs):
+def ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs, leds_to_use):
     """
     
     """
-    assert num_leds==4, "TTL code expects 4 LED channels, other nums of channels not yet supported"
+    
 
     # Load the TTL data
     ephys_ttl_path = glob('%s/**/TTL_*/' % base_path,recursive = True)[0]

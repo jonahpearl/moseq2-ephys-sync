@@ -11,17 +11,17 @@ import pdb
 
 
 def main_function(base_path,
-output_dir_name,
-first_source,
-second_source,
-led_loc=None, 
-led_blink_interval=5, 
-arduino_spec=None, 
-s1_led_rois_from_file=False,
-s2_led_rois_from_file=False, 
-overwrite_models=False,
-overwrite_extraction=False,
-leds_to_use=[1,2,3,4]):
+    output_dir_name,
+    first_source,
+    second_source,
+    led_loc=None, 
+    led_blink_interval=5, 
+    arduino_spec=None, 
+    s1_led_rois_from_file=False,
+    s2_led_rois_from_file=False, 
+    overwrite_models=False,
+    overwrite_extraction=False,
+    leds_to_use=[1,2,3,4]):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
     ----
@@ -90,7 +90,7 @@ leds_to_use=[1,2,3,4]):
     print('Dealing with first souce...')
     # Deal with first source
     if first_source == 'ttl':
-        first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
+        first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs, leds_to_use)
     elif first_source == 'mkv':
         assert not (led_loc and s1_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
         first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_extraction)
@@ -107,7 +107,7 @@ leds_to_use=[1,2,3,4]):
     print('Dealing with second souce...')
     # Deal with second source
     if second_source == 'ttl':
-        second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
+        second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs, leds_to_use)
     elif second_source == 'mkv':
         assert not (led_loc and s2_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
         second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s2_led_rois_from_file, overwrite_extraction)
