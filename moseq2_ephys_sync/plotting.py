@@ -8,7 +8,7 @@ plt.rcParams['pdf.fonttype'] = 'truetype'
 import numpy as np
 
 
-def plot_code_chunk(first_source_led_codes, first_source, second_source_led_codes, second_source, save_path, fname='match_check' ):
+def plot_code_chunk(first_source_led_codes, first_source, second_source_led_codes, second_source, save_path):
     """
     Visualize a small chunk of the bit codes. do you see a match? 
     ---
@@ -35,13 +35,13 @@ def plot_code_chunk(first_source_led_codes, first_source, second_source_led_code
     plt.ylabel('bit code')
     plt.legend()
 
-    f.savefig(f'{save_path}/{fname}.png')
+    f.savefig(f'{save_path}/match_check_{first_source}_and_{second_source}.png')
 
     plt.close(f)
 
 
 ## plot the matched codes against each other:
-def plot_matched_scatter(matches,save_path):
+def plot_matched_scatter(matches, first_source, second_source, save_path):
 
     f = plt.figure(dpi=600)
 
@@ -51,10 +51,10 @@ def plot_matched_scatter(matches,save_path):
 
     plt.title('Found %d matches' % len(matches))
 
-    plt.xlabel('time of ephys codes')
-    plt.ylabel('time of video codes')
+    plt.xlabel(f'time of {first_source} codes')
+    plt.ylabel(f'time of {second_source} codes')
 
-    f.savefig('%s/matched_codes_scatter.png' % save_path)
+    f.savefig(f'{save_path}/matched_codes_scatter_{first_source}_and_{second_source}.png')
 
     plt.close(f)
 
