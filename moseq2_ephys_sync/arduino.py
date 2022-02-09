@@ -93,6 +93,7 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
         'dac': 'float64',
         'mouseROI': 'int8',
         'odor_ttl': 'int8',
+        'odor': 'int8', # same as odor_ttl
         'wheel': 'int64',
         'dac_value': 'float64',
         'dac': 'float64'    
