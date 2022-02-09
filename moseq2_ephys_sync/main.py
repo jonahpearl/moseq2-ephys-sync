@@ -10,6 +10,47 @@ import mkv, arduino, ttl, sync, plotting, basler, avi
 import pdb
 
 
+def process_source(source,
+                    base_path=None,
+                    save_path=None,
+                    num_leds=None,
+                    leds_to_use=None,
+                    led_blink_interval=None, 
+                    ephys_fs=None,
+                    mkv_chunk_size=None,
+                    basler_chunk_size=None,
+                    avi_chunk_size=None,
+                    led_loc=None,
+                    led_rois_from_file=None,
+                    overwrite_extraction=False,
+                    arduino_spec=None
+                    ):
+
+    if source == 'ttl':
+        source_led_codes, source_full_timestamps = ttl.ttl_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, ephys_fs)
+
+    elif source == 'mkv':
+        assert not (led_loc and led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
+        assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
+        source_led_codes, source_full_timestamps = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, led_rois_from_file, overwrite_extraction)
+
+    elif source == 'arduino' or source=='txt':
+        source_led_codes, source_full_timestamps = arduino.arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
+
+    elif source == 'basler':
+        assert not (led_loc and led_rois_from_file), "User cannot specify both Basler led location (top right, etc) and list of exact Basler LED ROIs!"
+        source_led_codes, source_full_timestamps = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc, basler_chunk_size, led_rois_from_file, overwrite_extraction)
+
+    elif source == 'avi':
+        assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
+        source_led_codes, source_full_timestamps = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_extraction=overwrite_extraction)
+
+    else:
+        raise RuntimeError(f'First source keyword {first_source} not recognized')
+
+    return source_led_codes, source_full_timestamps
+
+
 def main_function(base_path,
 output_dir_name,
 first_source,
@@ -58,7 +99,7 @@ sources_to_predict=None):
     #### SETUP ####
     # Built-in params (should make dynamic)
     mkv_chunk_size = 2000
-    basler_chunk_size = 2000  
+    basler_chunk_size = 3000  # need to use high enough so that std of LEDs is high enough to separate them  
     avi_chunk_size = 2000
     ephys_fs = 3e4  # sampling rate in Hz
 
@@ -77,77 +118,58 @@ sources_to_predict=None):
                         os.path.exists(f'{save_path}/{second_source}_from_{first_source}.p')
 
     if model_exists_bool and not overwrite_models:
-        raise RuntimeError("Model or output dir already exists and overwrite_models is false!")
+        raise RuntimeError("One or both models already exist and overwrite_models is false!")
 
-    # Require led rois for basler
-    if (first_source == 'basler' and not s1_led_rois_from_file) or (second_source == 'basler' and not s2_led_rois_from_file):
-        raise RuntimeError("User must specify LED rois for basler workflow")
-
-
-
-    #### INDIVIDUAL DATA STREAM WORKFLOWS ####
 
     print('Dealing with first souce...')
 
     # Deal with first source.
     # first_source_led_codes: array of reconstructed pixel clock codes where: codes[:,0] = time, codes[:,1] = code (and codes[:,2] = trigger channel but that's not used in this code)
     # first_source_full_timestamps: full list of timestamps from source 1 (every timestamp, not just event times! For prediction with the model at the end.)
+    first_source_led_codes, first_source_full_timestamps = \
+    process_source(first_source,
+                    base_path=base_path,
+                    save_path=save_path, num_leds=num_leds,
+                    leds_to_use=leds_to_use,
+                    led_blink_interval=led_blink_interval, 
+                    ephys_fs=ephys_fs,
+                    mkv_chunk_size=mkv_chunk_size,
+                    basler_chunk_size=basler_chunk_size,
+                    avi_chunk_size=avi_chunk_size,
+                    led_loc=led_loc,
+                    led_rois_from_file=s1_led_rois_from_file,
+                    overwrite_extraction=overwrite_extraction,
+                    arduino_spec=arduino_spec
+                    )
 
-    if first_source == 'ttl':
-        first_source_led_codes, first_source_full_timestamps = ttl.ttl_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, ephys_fs)
-
-    elif first_source == 'mkv':
-        assert not (led_loc and s1_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
-        assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
-        first_source_led_codes, first_source_full_timestamps = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_extraction)
-
-    elif first_source == 'arduino' or first_source=='txt':
-        first_source_led_codes, first_source_full_timestamps = arduino.arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
-
-    elif first_source == 'basler':
-        first_source_led_codes, first_source_full_timestamps = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s1_led_rois_from_file, overwrite_models)
-
-    elif first_source == 'avi':
-        assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
-        first_source_led_codes, first_source_full_timestamps = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_extraction=overwrite_extraction)
-
-    else:
-        raise RuntimeError(f'First source keyword {first_source} not recognized')
-
+    print('Dealing with second souce...')
+    second_source_led_codes, second_source_full_timestamps = \
+    process_source(second_source,
+                    base_path=base_path,
+                    save_path=save_path, num_leds=num_leds,
+                    leds_to_use=leds_to_use,
+                    led_blink_interval=led_blink_interval, 
+                    ephys_fs=ephys_fs,
+                    mkv_chunk_size=mkv_chunk_size,
+                    basler_chunk_size=basler_chunk_size,
+                    avi_chunk_size=avi_chunk_size,
+                    led_loc=led_loc,
+                    led_rois_from_file=s2_led_rois_from_file,
+                    overwrite_extraction=overwrite_extraction,
+                    arduino_spec=arduino_spec
+                    )
+   
 
     # Sanity check on timestamps being in seconds
     first_source_full_timestamps = np.array(first_source_full_timestamps)
     assert (first_source_full_timestamps[-1] - first_source_full_timestamps[0]) < 7200, f"Your timestamps for {first_source} appear to span more than two hours...are you sure the timestamps are in seconds?"
 
-
-
-    print('Dealing with second souce...')
-    # Deal with second source
-    if second_source == 'ttl':
-        second_source_led_codes, second_source_full_timestamps = ttl.ttl_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, ephys_fs)
-
-    elif second_source == 'mkv':
-        assert not (led_loc and s2_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
-        second_source_led_codes, second_source_full_timestamps = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s2_led_rois_from_file, overwrite_extraction)
-
-    elif second_source == 'arduino' or second_source=='txt':
-        second_source_led_codes, second_source_full_timestamps = arduino.arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
-
-    elif second_source == 'basler':
-        second_source_led_codes, second_source_full_timestamps = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s2_led_rois_from_file, overwrite_models)
-
-    elif first_source == 'avi':
-        second_source_led_codes, second_source_full_timestamps = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_models=overwrite_models)
-
-    else:
-        raise RuntimeError(f'Second source keyword {second_source} not recognized')
-
-    # Sanity check on timestamps being in seconds
     second_source_full_timestamps = np.array(second_source_full_timestamps)
     assert (second_source_full_timestamps[-1] - second_source_full_timestamps[0]) < 7200, f"Your timestamps for {second_source} appear to span more than two hours...are you sure the timestamps are in seconds?"
 
+    
     # Save the codes for use later
-    np.savez('%s/codes.npz' % save_path, first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
+    np.savez(f'{save_path}/codes_{first_source}_and_{second_source}.npz', first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
 
 
     # Visualize a small chunk of the bit codes. do you see a match? 
@@ -169,7 +191,7 @@ sources_to_predict=None):
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 
     ## Plot the matched codes against each other:
-    plotting.plot_matched_scatter(matches, save_path)
+    plotting.plot_matched_scatter(matches, first_source, second_source, save_path)
 
 
     #### Make the models! ####
@@ -248,7 +270,7 @@ if __name__ == "__main__" :
     parser.add_argument('-o', '--output_dir_name', type=str, default='sync')  # name of output folder within path
     parser.add_argument('-s1', '--first_source', type=str)  # ttl, mkv, basler (mp4 with rois), arduino (txt), or absolute path to data file with extension
     parser.add_argument('-s2', '--second_source', type=str)   
-    parser.add_argument('--led_loc', type=str)
+    parser.add_argument('--led_loc', type=str, help="Location of the syncing LEDs in the video, as seen from plt.imshow()'s point of view. Currenly supported: quadrants (topright, topleft, bottomright, bottomleft), some vertical strips (rightquarter, leftquarter), some horizontal strips (topquarter, topthird, bottomquarter). Add more in extract_leds.py.")
     parser.add_argument('--led_blink_interval', type=int, default=5)  # default blink every 5 seconds
     parser.add_argument('--arduino_spec', type=str, help="Currently supported: fictive_olfaction, odor_on_wheel, basic_thermistor")  # specifiy cols in arduino text file
     parser.add_argument('--s1_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 1 led rois")  # need to run separate jup notbook first to get this
