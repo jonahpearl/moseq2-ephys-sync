@@ -64,6 +64,7 @@ overwrite_models=False,
 overwrite_extraction=False,
 leds_to_use=[1,2,3,4],
 sources_to_predict=None):
+
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
     ----
@@ -122,8 +123,6 @@ sources_to_predict=None):
 
 
     print('Dealing with first souce...')
-
-    # Deal with first source.
     # first_source_led_codes: array of reconstructed pixel clock codes where: codes[:,0] = time, codes[:,1] = code (and codes[:,2] = trigger channel but that's not used in this code)
     # first_source_full_timestamps: full list of timestamps from source 1 (every timestamp, not just event times! For prediction with the model at the end.)
     first_source_led_codes, first_source_full_timestamps = \
