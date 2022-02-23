@@ -48,4 +48,10 @@ To use the resulting models, try:
 4. `video_model = joblib.load('input_directory/sync/video_timebase.p')`
 5. `ephys_times = video_model.predict(video_times.reshape(-1,1))`
 
-Test change
+
+
+Notes on using the models:
+Different workflows transform their inputs in certain ways to help with downstream analysis.
+1) All workflows convert timestamps into seconds. This does make certain assumptions that are currently hard-coded, specifically, it is assumed that the arduino timestamps are in milliseconds; it is assumed that ephys is sampled at 30 kHz; it is assumed that AVI timestamps (`device_timestamps.npy` from CW's pyk4a script) are in microseconds; and that mkv / basler timestamps are already in seconds. Currently, no options exist to override these defaults, so if you need to, I'd make a new branch and edit them.
+2) The TTL workflow has the first time subtracted, such that it begins at 0. This allows it to play nicely with an open ephys glitch.
+
