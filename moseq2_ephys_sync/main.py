@@ -228,7 +228,7 @@ sources_to_predict=None):
 
         # Learn to predict s1 from s2. Syntax is fit(X,Y).
         mdl = PiecewiseRegressor(verbose=True,
-                                binner=KBinsDiscretizer(n_bins=10))
+                                binner=KBinsDiscretizer(n_bins=4))
         mdl.fit(s2.reshape(-1, 1), s1)
 
         outname = f'{n1}_from_{n2}'
