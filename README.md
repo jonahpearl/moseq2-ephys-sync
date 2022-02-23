@@ -41,7 +41,7 @@ To run an extraction:
 
 This will extract the IR LED data from the video and ephys files, find matches in the resulting bit codes, plot the results in `/input_directory/sync/` and save two models that can be used for translating between the two timebases: `video_model.p` which takes as inputs video times (in seconds) and translates them into ephys times; and `ephys_model.p` which conversely takes in ephys times (in seconds) and translated them into video times. 
 
-To use the resulting models, try:
+To use the resulting models, be sure to transform all values to be in seconds before inputting to the models, and if using ephys data, be sure to use zero-subtracted data (i.e. the first value should be 0). Try:
 1. `import joblib`
 2. `ephys_model = joblib.load('input_directory/sync/ephys_timebase.p')`
 3. `video_times = ephys_model.predict(ephys_times.reshape(-1,1))` (assuming times are `1D` arrays)
