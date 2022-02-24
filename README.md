@@ -41,11 +41,17 @@ To run an extraction:
 
 This will extract the IR LED data from the video and ephys files, find matches in the resulting bit codes, plot the results in `/input_directory/sync/` and save two models that can be used for translating between the two timebases: `video_model.p` which takes as inputs video times (in seconds) and translates them into ephys times; and `ephys_model.p` which conversely takes in ephys times (in seconds) and translated them into video times. 
 
-To use the resulting models, try:
+To use the resulting models, be sure to transform all values to be in seconds before inputting to the models, and if using ephys data, be sure to use zero-subtracted data (i.e. the first value should be 0). Try:
 1. `import joblib`
 2. `ephys_model = joblib.load('input_directory/sync/ephys_timebase.p')`
 3. `video_times = ephys_model.predict(ephys_times.reshape(-1,1))` (assuming times are `1D` arrays)
 4. `video_model = joblib.load('input_directory/sync/video_timebase.p')`
 5. `ephys_times = video_model.predict(video_times.reshape(-1,1))`
 
-Test change
+
+
+Notes on using the models:
+Different workflows transform their inputs in certain ways to help with downstream analysis.
+1) All workflows convert timestamps into seconds. This does make certain assumptions that are currently hard-coded, specifically, it is assumed that the arduino timestamps are in milliseconds; it is assumed that ephys is sampled at 30 kHz; it is assumed that AVI timestamps (`device_timestamps.npy` from CW's pyk4a script) are in microseconds; and that mkv / basler timestamps are already in seconds. Currently, no options exist to override these defaults, so if you need to, I'd make a new branch and edit them.
+2) The TTL workflow has the first time subtracted, such that it begins at 0. This allows it to play nicely with an open ephys glitch.
+
