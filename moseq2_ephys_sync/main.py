@@ -5,7 +5,7 @@ import argparse
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
 
-import mkv, arduino, ttl, sync, plotting, basler, avi
+import mkv, arduino, ttl, sync, plotting, basler, avi, basler_bonsai
 
 import pdb
 
@@ -41,12 +41,16 @@ def process_source(source,
         assert not (led_loc and led_rois_from_file), "User cannot specify both Basler led location (top right, etc) and list of exact Basler LED ROIs!"
         source_led_codes, source_full_timestamps = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc, basler_chunk_size, led_rois_from_file, overwrite_extraction)
 
+    elif source == 'basler_bonsai':
+        # TODO: add in possibility in main code of passing in both arduino spec and bonsai spec (although ideally they just have headers...)
+        source_led_codes, source_full_timestamps = basler_bonsai.basler_bonsai_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval)
+
     elif source == 'avi':
         assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
         source_led_codes, source_full_timestamps = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_extraction=overwrite_extraction)
 
     else:
-        raise RuntimeError(f'First source keyword {first_source} not recognized')
+        raise RuntimeError(f'First source keyword {source} not recognized')
 
     return source_led_codes, source_full_timestamps
 
@@ -106,7 +110,6 @@ sources_to_predict=None):
 
     # Detect num leds
     num_leds = len(leds_to_use)
-
 
     # Set up save path
     save_path = f'{base_path}/{output_dir_name}/'
