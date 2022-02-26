@@ -73,7 +73,7 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
     # Define header data types
     # Do not use unsigned integers!! Otherwise np.diff() will not be able to return negatives.
     header_val_dtypes = {
-        'time': 'int64',
+        'time': 'float64',  # all times in initially in whole numbers of ms, but use float so that when convert to ms, you don't lose precision
         'led1': 'int8',
         'led2': 'int8',
         'led3': 'int8',
