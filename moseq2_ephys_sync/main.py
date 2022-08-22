@@ -5,10 +5,14 @@ import argparse
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
 
-import mkv, arduino, ttl, sync, plotting, basler, avi, basler_bonsai
+# from .video import avi, basler, basler_bonsai, mkv
+
+from . import workflows, sync, viz
 
 import pdb
 
+
+#TODO: allow passing each source's time units, eg seconds vs microseconds
 
 def process_source(source,
                     base_path=None,
@@ -26,8 +30,11 @@ def process_source(source,
                     arduino_spec=None
                     ):
 
+
+    #TODO: remove save path from these args, doesn't do anything I dont think!
+
     if source == 'ttl':
-        source_led_codes, source_full_timestamps = ttl.ttl_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, ephys_fs)
+        source_led_codes, source_full_timestamps = workflows.ttl_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, ephys_fs)
 
     elif source == 'mkv':
         assert not (led_loc and led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
@@ -35,7 +42,10 @@ def process_source(source,
         source_led_codes, source_full_timestamps = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, led_rois_from_file, overwrite_extraction)
 
     elif source == 'arduino' or source=='txt':
-        source_led_codes, source_full_timestamps = arduino.arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
+        source_led_codes, source_full_timestamps = workflows.arduino_workflow(base_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
+
+    elif source.endswith('.csv') or source.endswith('.txt'):
+        source_led_codes, source_full_timestamps = workflows.arduino_workflow(source, num_leds, leds_to_use, led_blink_interval, arduino_spec)
 
     elif source == 'basler':
         assert not (led_loc and led_rois_from_file), "User cannot specify both Basler led location (top right, etc) and list of exact Basler LED ROIs!"
@@ -56,9 +66,9 @@ def process_source(source,
 
 
 def main_function(base_path,
-output_dir_name,
 first_source,
 second_source,
+output_dir_name='sync',
 led_loc=None, 
 led_blink_interval=5, 
 arduino_spec=None, 
@@ -67,7 +77,7 @@ s2_led_rois_from_file=False,
 overwrite_models=False,
 overwrite_extraction=False,
 leds_to_use=[1,2,3,4],
-sources_to_predict=None):
+sources_to_predict=[]):
 
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
@@ -109,6 +119,10 @@ sources_to_predict=None):
     ephys_fs = 3e4  # sampling rate in Hz
 
 
+    # hotfix: somehow default of sources_to_predict is None instead of []? Fix that so it's iterable.
+    if sources_to_predict is None:
+        sources_to_predict = []
+
     # Detect num leds
     num_leds = len(leds_to_use)
 
@@ -116,6 +130,18 @@ sources_to_predict=None):
     save_path = f'{base_path}/{output_dir_name}/'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+
+    # Get names of sources
+    if os.path.exists(first_source):
+        first_source_name = os.path.splitext(os.path.basename(first_source))[0]
+    else:
+        first_source_name = first_source
+
+    if os.path.exists(second_source):
+        second_source_name = os.path.splitext(os.path.basename(second_source))[0]
+    else:
+        second_source_name = second_source
+
 
     # Check if models already exist, only over-write if requested
     model_exists_bool = os.path.exists(f'{save_path}/{first_source}_from_{second_source}.p') or \
@@ -162,6 +188,8 @@ sources_to_predict=None):
                     )
    
 
+
+
     # Sanity check on timestamps being in seconds
     first_source_full_timestamps = np.array(first_source_full_timestamps)
     assert (first_source_full_timestamps[-1] - first_source_full_timestamps[0]) < 7200, f"Your timestamps for {first_source} appear to span more than two hours...are you sure the timestamps are in seconds?"
@@ -171,12 +199,12 @@ sources_to_predict=None):
 
     
     # Save the codes for use later
-    np.savez(f'{save_path}/codes_{first_source}_and_{second_source}.npz', first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
+    np.savez(f'{save_path}/codes_{first_source_name}_and_{second_source_name}.npz', first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
 
 
     # Visualize a small chunk of the bit codes. do you see a match? 
     # Codes array should have times in seconds by this point
-    plotting.plot_code_chunk(first_source_led_codes, first_source, second_source_led_codes, second_source, save_path)
+    viz.plot_code_chunk(first_source_led_codes, first_source_name, second_source_led_codes, second_source_name, save_path)
 
 
 
@@ -193,7 +221,7 @@ sources_to_predict=None):
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 
     ## Plot the matched codes against each other:
-    plotting.plot_matched_scatter(matches, first_source, second_source, save_path)
+    viz.plot_matched_scatter(matches, first_source_name, second_source_name, save_path)
 
 
     #### Make the models! ####
@@ -211,21 +239,21 @@ sources_to_predict=None):
         if i == 0:
             s1 = ground_truth_source1_event_times
             t1 = first_source_led_codes
-            n1 = first_source
+            n1 = first_source_name
             full1 = first_source_full_timestamps
             s2 = ground_truth_source2_event_times
             t2 = second_source_led_codes
-            n2 = second_source
+            n2 = second_source_name
             full2 = second_source_full_timestamps
 
         elif i == 1:
             s1 = ground_truth_source2_event_times
             t1 = second_source_led_codes
-            n1 = second_source
+            n1 = second_source_name
             full1 = first_source_full_timestamps
             s2 = ground_truth_source1_event_times
             t2 = first_source_led_codes
-            n2 = first_source
+            n2 = first_source_name
             full2 = first_source_full_timestamps
 
         # Learn to predict s1 from s2. Syntax is fit(X,Y).
@@ -238,11 +266,11 @@ sources_to_predict=None):
         # Verify accuracy of predicted event times
         predicted_event_times = mdl.predict(s2.reshape(-1, 1))
         time_errors = predicted_event_times - s1 
-        plotting.plot_model_errors(time_errors, save_path, outname)
+        viz.plot_model_errors(time_errors, save_path, outname)
 
         # Plot all predicted times
         all_predicted_times = mdl.predict(t2[:,0].reshape(-1, 1))  # t1-timebase times of t2 codes (predict t1 from t2)
-        plotting.plot_matched_times(all_predicted_times, t2, t1, n1, n2, save_path, outname)
+        viz.plot_matched_times(all_predicted_times, t2, t1, n1, n2, save_path, outname)
 
         # Save
         joblib.dump(mdl, os.path.join(save_path,f'{outname}.p'))

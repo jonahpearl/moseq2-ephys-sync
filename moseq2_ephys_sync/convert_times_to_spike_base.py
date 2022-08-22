@@ -9,6 +9,8 @@ import warnings
 import re
 import pandas as pd
 
+#TODO: refactor this to use moseq_fo
+
 def load_sniff_data_from_nwb(nwb_filepath):
     io = nwb.NWBHDF5IO(nwb_filepath, 'r')
     nwb_file = io.read()
@@ -54,7 +56,6 @@ def ts_interface_to_df(interface, timeseries_to_use='all'):
     
     # Collect rest of data
     for i, ts in enumerate(ts_list):
-#         pdb.set_trace()
         arr[:,i+1] = np.array(interface[ts].data[:])
         
     return pd.DataFrame(arr, columns = ['time']+ts_list)
