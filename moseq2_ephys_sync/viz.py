@@ -1,9 +1,6 @@
 import matplotlib as mpl
 mpl.use('pdf')
 import matplotlib.pyplot as plt
-import seaborn as sns
-sns.set_style('white')
-sns.set_style('ticks')
 plt.rcParams['pdf.fonttype'] = 'truetype'
 import numpy as np
 
