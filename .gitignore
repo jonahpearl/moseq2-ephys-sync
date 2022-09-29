@@ -7,3 +7,4 @@ dist
 *.egg-info
 *.png
 test_data
+*.p
