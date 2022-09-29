@@ -7,12 +7,12 @@ from glob import glob
 import joblib
 import argparse
 import pickle
-from .video import extract_leds
+
 import decord
 from skimage import color
 from cv2 import resize
 
-import moseq2_extract.io.video as moseq_video  #TODO: make this a stand-alone module
+import moseq2_ephys_sync.video.extract_leds
 
 
 ## General utils

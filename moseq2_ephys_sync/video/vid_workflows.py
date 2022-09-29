@@ -7,16 +7,15 @@ from glob import glob
 import joblib
 import argparse
 import pickle
-from .video import extract_leds
 import decord
 import imageio
 from skimage import color
 from cv2 import resize
 
-from . import vid_util
+from . import vid_util, extract_leds
 
 import moseq2_ephys_sync.viz as viz
-import moseq2_ephys_sync.video.extract_leds as extract_leds
+# import moseq2_ephys_sync.video.extract_leds as extract_leds
 import moseq2_ephys_sync.sync as sync
 
 
