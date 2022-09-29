@@ -8,7 +8,7 @@ import click
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
 
-from . import workflows, sync, viz
+from moseq2_ephys_sync import workflows, sync, viz
 
 import pdb
 
@@ -26,8 +26,8 @@ VALID_SOURCE_ABBREVS = ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_
 @click.argument('--s2-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 2 led rois")
 @click.argument('--overwrite-models', is_flag=True)
 @click.argument('--overwrite_extraction', is_flag=True)
-@click.argument('--leds_to_use', nargs='*', default=['1', '2', '3', '4'], help='Choose a subset of leds (1-indexed) to use if one was broken (syntax: --leds_to_use 1 2 4 --next_arg...')
-@click.argument('--predict_full_timestamps_of_source', nargs='*', default=None, help='Choose which sources (1, 2, or both) to predict full list of times for (syntax: ...of_source 1 2 --next_arg')
+@click.argument('--leds_to_use', nargs=-1, default=['1', '2', '3', '4'], help='Choose a subset of leds (1-indexed) to use if one was broken (syntax: --leds_to_use 1 2 4 --next_arg...')
+@click.argument('--predict_full_timestamps_of_source', nargs=-1, default=None, help='Choose which sources (1, 2, or both) to predict full list of times for (syntax: ...of_source 1 2 --next_arg')
 def main(base_path,
     first_source=None,
     second_source=None,

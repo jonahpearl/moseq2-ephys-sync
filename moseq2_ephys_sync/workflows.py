@@ -471,7 +471,14 @@ def load_arduino_data(base_path, colnames=None, dtypes=None, file_glob='*.txt'):
         'i': 'int64',
         'centroid_x': 'float64', 
         'centroid_y': 'float64',
-        'orientation': 'float64'    
+        'orientation': 'float64',
+        'tdt': 'int8',
+        'x': 'float64', 
+        'y': 'float64',
+        'majoraxis': 'float64', 
+        'minoraxis': 'float64',
+        'area': 'float64', 
+        'orientation': 'float64'
     }
 
     # Find file
@@ -490,9 +497,14 @@ def load_arduino_data(base_path, colnames=None, dtypes=None, file_glob='*.txt'):
     else:
         header = 0
 
+    # colnames_to_use = ['time', 'frame' 'led1', 'led2', 'led3', 'led4']
+    # colnames_to_use = [col for col in colnames_to_use if col in colnames]
     if header:
         dtype_dict = {col: header_val_dtypes[col] for col in colnames}
         data = pd.read_csv(arduino_data_path, header=0, dtype=dtype_dict, index_col=False)  # header=0 means first row
+
+        # dtype_dict = {col: header_val_dtypes[col] for col in colnames_to_use}
+        # data = pd.read_csv(arduino_data_path, header=0, dtype=dtype_dict, index_col=False, usecols=colnames_to_use)  # header=0 means first row
     else:
         dtype_dict = {colname: dtype for colname, dtype in zip(colnames, dtypes)}
         try:
