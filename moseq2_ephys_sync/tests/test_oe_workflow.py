@@ -5,7 +5,7 @@ import pytest
 
 from moseq2_ephys_sync import workflows, sync
 
-PATH_TO_TEST_DATA = '/n/groups/datta/Jonah/moseq2-ephys-sync/moseq2_ephys_sync/test_data/20220927_test'
+PATH_TO_TEST_DATA = '/n/groups/datta/Jonah/moseq2-ephys-sync/test_data/20220927_test'
 
 def test_oe_loading():
     ch, ts = workflows.load_oe_data(PATH_TO_TEST_DATA)

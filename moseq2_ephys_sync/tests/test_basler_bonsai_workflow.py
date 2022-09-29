@@ -6,7 +6,7 @@ import pytest
 from moseq2_ephys_sync import workflows, sync
 
 def test_load_basler_bonsai():
-    PATH_TO_TEST_DATA = '/n/groups/datta/Jonah/moseq2-ephys-sync/moseq2_ephys_sync/test_data/ino_basler_test/'
+    PATH_TO_TEST_DATA = '/n/groups/datta/Jonah/moseq2-ephys-sync/test_data/ino_basler_test/'
     txt_data = workflows.load_arduino_data(PATH_TO_TEST_DATA, file_glob='basler*.csv')
     np.testing.assert_allclose(txt_data.loc[0, 'time'], 7777583387622.0)
     assert txt_data.shape == (92384, 6)

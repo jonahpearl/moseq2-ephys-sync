@@ -9,7 +9,7 @@ from moseq2_ephys_sync import workflows, sync
 
 def test_arduino_and_oe_sync():
 
-    PATH_TO_TEST_DATA = '/n/groups/datta/Jonah/moseq2-ephys-sync/moseq2_ephys_sync/test_data/20220927_test'
+    PATH_TO_TEST_DATA = '/n/groups/datta/Jonah/moseq2-ephys-sync/test_data/20220927_test'
     # Get the event codes from each source
     first_source_led_codes, first_source_full_timestamps = workflows.arduino_workflow(PATH_TO_TEST_DATA, num_leds=4, leds_to_use=[1,2,3,4], led_blink_interval=5)
     second_source_led_codes, second_source_full_timestamps = workflows.oe_workflow(PATH_TO_TEST_DATA, num_leds=4, leds_to_use=[1,2,3,4], led_blink_interval=5, ephys_fs=3e4)
@@ -29,7 +29,7 @@ def test_arduino_and_oe_sync():
 
     
 def test_arduino_and_basler_bonsai_sync():
-    PATH_TO_TEST_DATA = '/n/groups/datta/Jonah/moseq2-ephys-sync/moseq2_ephys_sync/test_data/ino_basler_test/'
+    PATH_TO_TEST_DATA = '/n/groups/datta/Jonah/moseq2-ephys-sync/test_data/ino_basler_test/'
 
     first_source_led_codes, first_source_full_timestamps = workflows.arduino_workflow(PATH_TO_TEST_DATA, num_leds=4, leds_to_use=[1,2,3,4], led_blink_interval=5)
     second_source_led_codes, second_source_full_timestamps = workflows.basler_bonsai_workflow(PATH_TO_TEST_DATA, num_leds=4, leds_to_use=[1,2,3,4], led_blink_interval=5)
