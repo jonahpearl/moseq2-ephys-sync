@@ -11,7 +11,7 @@ def test_arduino_loading():
     data = workflows.load_arduino_data(PATH_TO_TEST_DATA)
     assert type(data) is pd.DataFrame
     assert data.loc[0, 'time'] == 346475.0
-    assert data.shape == (323225, 14)
+    assert data.shape == (323225, 5)
 
 def test_list_to_events_and_codes():
     times = np.arange(10)
