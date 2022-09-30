@@ -400,37 +400,11 @@ def basler_bonsai_workflow(base_path, num_leds, leds_to_use, led_blink_interval,
     return bonsai_codes, bonsai_timestamps
 
 
-def get_col_info(spec):
-    """
-    Given a string specifying the experiment type, return expected list of columns in arudino text file
-    """
-    if spec == 'old_fictive_olfaction':
-        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm', 'olfled']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64', 'float64', 'int32', 'uint8']
-    elif spec == 'fictive_olfaction':
-        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm', 'olfled', 'pwm']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64', 'float64', 'int32', 'uint8', 'uint8']
-    elif spec == 'basic_thermistor' or spec == 'bucket':
-        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'int32']
-    elif spec == 'header':  # headers in txt files
-        arduino_colnames = None
-        arduino_dtypes = None
-    elif spec == "odor_on_wheel_notherm":
-        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64']
-    elif spec == "odor_on_wheel":
-        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel','thermistor','odor_ttl']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64','int64','int64']
-    return arduino_colnames, arduino_dtypes
-
-
-# TODO: change this so that the load arduino functionality is taken from moseq fo -- OR just load the first five columns
-
-def load_arduino_data(base_path, colnames=None, dtypes=None, file_glob='*.txt'):
+def load_arduino_data(base_path, file_glob='*.txt'):
 
     # Define header data types
     # Do not use unsigned integers!! Otherwise np.diff() will not be able to return negatives.
+    colnames_to_use = ['time', 'frame', 'led1', 'led2', 'led3', 'led4']  # only cols needed for syncing
     header_val_dtypes = {
         'time': 'float64',  # all times in initially in whole numbers of ms, but use float so that when convert to ms, you don't lose precision
         'frame': 'int64',
@@ -438,47 +412,6 @@ def load_arduino_data(base_path, colnames=None, dtypes=None, file_glob='*.txt'):
         'led2': 'int8',
         'led3': 'int8',
         'led4': 'int8',
-        'yaw': 'float64',
-        'roll': 'float64',
-        'pitch': 'float64',
-        'accx': 'float64',
-        'acc_x': 'float64',  # same as accz  
-        'accy': 'float64',  
-        'acc_y': 'float64',  # same as accy
-        'accz': 'float64',
-        'acc_z': 'float64',  # same as acc_z
-        'therm': 'int16',
-        'thermistor': 'int16',  # same as thermistor
-        'inhale': 'int8', 
-        'exhale': 'int8',
-        'olfled': 'int8',
-        'ledState': 'int8',  # same as olfled
-        'optoLed': 'int8',
-        'videoTTL': 'int8',
-        'pwm': 'int8',
-        'pwmVal': 'int8',  # same as pwm
-        'dac': 'float64',
-        'mouseROI': 'int8',
-        'odor_ttl': 'int8',
-        'odor': 'int8', # same as odor_ttl
-        'odor1': 'int8', # same as odor_ttl
-        'odor2': 'int8', # same as odor_ttl
-        'odor3': 'int8', # same as odor_ttl
-        'odor4': 'int8', # same as odor_ttl
-        'wheel': 'int64',
-        'dac_value': 'float64',
-        'dac': 'float64',
-        'i': 'int64',
-        'centroid_x': 'float64', 
-        'centroid_y': 'float64',
-        'orientation': 'float64',
-        'tdt': 'int8',
-        'x': 'float64', 
-        'y': 'float64',
-        'majoraxis': 'float64', 
-        'minoraxis': 'float64',
-        'area': 'float64', 
-        'orientation': 'float64'
     }
 
     # Find file
@@ -491,35 +424,15 @@ def load_arduino_data(base_path, colnames=None, dtypes=None, file_glob='*.txt'):
     with open(arduino_data_path, 'r') as f:
         first_row = f.readline().strip('\r\n').split(',')
     if first_row[0] == 'time':
-        header = 1
         colnames = first_row
         print('Found header in arduino file, using...')
     else:
-        header = 0
+        raise ValueError('Expected header in csv to begin with "time", or did not find header')
 
-    # colnames_to_use = ['time', 'frame' 'led1', 'led2', 'led3', 'led4']
-    # colnames_to_use = [col for col in colnames_to_use if col in colnames]
-    if header:
-        dtype_dict = {col: header_val_dtypes[col] for col in colnames}
-        data = pd.read_csv(arduino_data_path, header=0, dtype=dtype_dict, index_col=False)  # header=0 means first row
-
-        # dtype_dict = {col: header_val_dtypes[col] for col in colnames_to_use}
-        # data = pd.read_csv(arduino_data_path, header=0, dtype=dtype_dict, index_col=False, usecols=colnames_to_use)  # header=0 means first row
-    else:
-        dtype_dict = {colname: dtype for colname, dtype in zip(colnames, dtypes)}
-        try:
-            # Try loading the entire thing first. 
-            data = pd.read_csv(arduino_data_path, header=0, names=colnames, dtype=dtype_dict, index_col=False)
-        except ValueError:
-            try:
-                # If needed, try ignoring the last line. This is slower so we don't use as default.
-                data = pd.read_csv(arduino_data_path, header=0, names=colnames, dtype=dtype_dict, index_col=False, warn_bad_lines=True, skipfooter=1)
-            except:
-                raise RuntimeError('Could not load arduino data -- check text file for weirdness. \
-                Most common issues text file issues are: \
-                -- line that ends with a "-" (minus sign), "." (decima) \
-                -- line that begins with a "," (comma) \
-                -- usually no more than one issue like this per txt file')
+    colnames_to_use = [col for col in colnames_to_use if col in colnames]
+    dtype_dict = {col: header_val_dtypes[col] for col in colnames_to_use}
+    data = pd.read_csv(arduino_data_path, header=0, dtype=dtype_dict, index_col=False, usecols=colnames_to_use)  # header=0 means first row
+    
     return data
 
 
