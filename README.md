@@ -5,8 +5,9 @@ To get started, try the following in termanal (these instructions assume you're 
 1. `conda create -n sync_test python=3.7`
 2. `conda activate sync_test`
 3. `cd ~/code/` (or wherever you want the repo to live
-4. `git clone https://github.com/guitchounts/moseq2-ephys-sync.git`
+4. `https://github.com/jonahpearl/moseq2-ephys-sync.git`
 5. `cd ./moseq2-ephys-sync/`
+6. `git switch refactor_workflows`
 6. `python setup.py install`
 7. `pip install git+ssh://git@github.com/dattalab/moseq2-extract.git@autosetting-params` (alternatively, try: `pip install git+https://github.com/dattalab/moseq2-extract.git@autosetting-params`) (alternatively, try using conda)
 8. `conda install scikit-learn=0.24` (moseq2-extract pins `scikit` to an earlier version; need to update to `0.24`
