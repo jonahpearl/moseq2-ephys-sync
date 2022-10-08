@@ -12,22 +12,22 @@ To get started, try the following in termanal (these instructions assume you're 
 9. [if using video modules] `module load ffmpeg`
 
 Here is a janky copy/paste of the current frequently used CLI options to stand in for better documentation:
-*@click.option('--input-path', '-i', type=str)
-*@click.option('-s1', '--first-source', type=str)
-*@click.option('-s2', '--second-source', type=str)
-(@click.option('-o', '--output-dir-name', type=str, default='sync')
-@click.option('--led-blink-interval', type=int, default=5, help='LED change interval, in seconds')
-@click.option('--s1-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
-@click.option('--s2-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
-@click.option('--overwrite-models', is_flag=True)
-@click.option('--leds_to_use', cls=PythonLiteralOption, default='["1", "2", "3", "4"]', help='Subset of leds (1-indexed) to use (eg if one was broken) (syntax: --leds_to_use ["1", "2", "3", "4"]')
-@click.option('--predict_full_timestamps_of_source', '-r', multiple=True, default=None, help='Choose which sources (1, 2, or both) to predict full list of times for (syntax: ...of_source 1 2 --next_arg')
+* @click.option('--input-path', '-i', type=str)
+* @click.option('-s1', '--first-source', type=str)
+* @click.option('-s2', '--second-source', type=str)
+* @click.option('-o', '--output-dir-name', type=str, default='sync')
+* @click.option('--led-blink-interval', type=int, default=5, help='LED change interval, in seconds')
+* @click.option('--s1-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
+* @click.option('--s2-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
+* @click.option('--overwrite-models', is_flag=True)
+* @click.option('--leds_to_use', cls=PythonLiteralOption, default='["1", "2", "3", "4"]', help='Subset of leds (1-indexed) to use (eg if one was broken) (syntax: --leds_to_use ["1", "2", "3", "4"]')
+* @click.option('--predict_full_timestamps_of_source', '-r', multiple=True, default=None, help='Choose which sources (1, 2, or both) to predict full list of times for (syntax: ...of_source 1 2 --next_arg')
 
 Here are the other CLI options that are a bit more niche. These mostly have to do with getting the led info from videos:
-@click.option('--overwrite_extraction', is_flag=True)
-@click.option('--led-loc', type=str, help="Location of the syncing LEDs in the video, as seen from plt.imshow()'s point of view. Currenly supported: quadrants (topright, topleft, bottomright, bottomleft), some vertical strips (rightquarter, leftquarter), some horizontal strips (topquarter, topthird, bottomquarter). Add more in extract_leds.py.")
-@click.option('--s1-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 1 led rois")
-@click.option('--s2-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 2 led rois")
+* @click.option('--overwrite_extraction', is_flag=True)
+* @click.option('--led-loc', type=str, help="Location of the syncing LEDs in the video, as seen from plt.imshow()'s point of view. Currenly supported: quadrants (topright, topleft, bottomright, bottomleft), some vertical strips (rightquarter, leftquarter), some horizontal strips (topquarter, topthird, bottomquarter). Add more in extract_leds.py.")
+* @click.option('--s1-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 1 led rois")
+* @click.option('--s2-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 2 led rois")
 
 To run an extraction:
 `moseq2_ephys_sync -path /input_directory/ [more options]`
