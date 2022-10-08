@@ -27,8 +27,8 @@ def plot_code_chunk(first_source_led_codes, first_source_name, second_source_led
     axarr[1].set_title(second_source_name)
     
 
-    # plt.xlim([-5,300])
-    plt.xlim([-5,50])
+    plt.xlim([-5,300])
+    # plt.xlim([-5,50])
     plt.xlabel('time (sec)')
     plt.ylabel('bit code')
     plt.legend()
@@ -62,7 +62,7 @@ def plot_model_errors(time_errors, save_path, outname, fname='model_errors'):
     f = plt.figure(dpi=600)
     ax = plt.hist(time_errors)
 
-    plt.title('%.2f sec. mean abs. error in second source Times' % np.abs(np.mean(time_errors)))
+    plt.title(f'{np.mean(np.abs(time_errors)):0.3f} sec. mean abs. error in second source Times')
     plt.xlabel('Predicted - actual matched video code times')
     f.savefig(f'{save_path}/{fname}_{outname}.png')
     plt.close(f)
