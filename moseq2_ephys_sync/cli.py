@@ -20,7 +20,7 @@ class PythonLiteralOption(click.Option):
 @click.option('--input-path', '-i', type=str)
 @click.option('-s1', '--first-source', type=str)
 @click.option('-s2', '--second-source', type=str)
-@click.option('-o', '--output-dir-name', type=str, default='sync')
+@click.option('-o', '--output-dir-name', type=str, default='sync', help='Relative path to output, from input')
 @click.option('--led-loc', type=str, help="Location of the syncing LEDs in the video, as seen from plt.imshow()'s point of view. Currenly supported: quadrants (topright, topleft, bottomright, bottomleft), some vertical strips (rightquarter, leftquarter), some horizontal strips (topquarter, topthird, bottomquarter). Add more in extract_leds.py.")
 @click.option('--led-blink-interval', type=int, default=5, help='LED change interval, in seconds')
 @click.option('--s1-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
@@ -30,10 +30,9 @@ class PythonLiteralOption(click.Option):
 @click.option('--s2-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 2 led rois")
 @click.option('--overwrite-models', is_flag=True)
 @click.option('--overwrite_extraction', is_flag=True)
-# @click.option('--leds_to_use', nargs=-1, default=['1', '2', '3', '4'], help='Choose a subset of leds (1-indexed) to use if one was broken (syntax: --leds_to_use 1 2 4 --next_arg...')
 @click.option('--leds_to_use', cls=PythonLiteralOption, default='["1", "2", "3", "4"]', help='Subset of leds (1-indexed) to use (eg if one was broken) (syntax: --leds_to_use ["1", "2", "3", "4"]')
 @click.option('--predict_full_timestamps_of_source', '-r', multiple=True, default=None, help='Choose which sources (1, 2, or both) to predict full list of times for (syntax: ...of_source 1 2 --next_arg')
-# @click.option('--pytesting', cls=PythonLiteralOption, default="[]", help='Select kwargs to return for testing (will not run rest of script!)')
+@click.option('--pytesting', is_flag=True, help='If true, return matches and dont actually make the syncing models')
 def main(input_path=None,
     first_source=None,
     second_source=None,
@@ -49,7 +48,7 @@ def main(input_path=None,
     overwrite_extraction=False,
     leds_to_use=["1", "2", "3", "4"],
     predict_full_timestamps_of_source=None,
-    pytesting=None):
+    pytesting=False):
 
     if (first_source is not None and second_source is None) or (first_source is None and second_source is not None):
         raise ValueError('Cannot specify one source but not the other!')
@@ -70,7 +69,8 @@ def main(input_path=None,
             overwrite_models=overwrite_models,
             overwrite_extraction=overwrite_extraction,
             leds_to_use=leds_to_use,
-            sources_to_predict=predict_full_timestamps_of_source)
+            sources_to_predict=predict_full_timestamps_of_source,
+            pytesting=pytesting)
 
 
 
