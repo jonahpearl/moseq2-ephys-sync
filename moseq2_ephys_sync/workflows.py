@@ -2,29 +2,24 @@ import numpy as np
 import pandas as pd
 import os
 from os.path import join, exists
-import moseq2_ephys_sync.sync as sync
-import moseq2_ephys_sync.util as util
 from glob import glob
 import joblib
-import argparse
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
 
-from . import sync, viz
+from moseq2_ephys_sync import sync, viz, util, workflows
 
 import pdb
 
-VALID_SOURCE_ABBREVS = ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_bonsai', 'avi']
+def get_valid_source_abbrevs():
+    return ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_bonsai', 'avi']
 def process_source(source,
                     base_path=None,
                     save_path=None,
                     num_leds=None,
                     leds_to_use=None,
                     led_blink_interval=None, 
-                    ephys_fs=None,
-                    mkv_chunk_size=None,
-                    basler_chunk_size=None,
-                    avi_chunk_size=None,
+                    source_timescale_factor_log10=None,
                     led_loc=None,
                     led_rois_from_file=None,
                     overwrite_extraction=False,
@@ -63,20 +58,92 @@ def process_source(source,
     return source_led_codes, source_full_timestamps
 
 
-def verify_sources(first_source, second_source):
-    if exists(first_source):
-        first_source_name = os.path.splitext(os.path.basename(first_source))[0]
-    else:
-        first_source_name = first_source
-        if first_source_name not in VALID_SOURCE_ABBREVS:
-            raise ValueError(f'First source keyword {first_source_name} not recognized')
-    if exists(second_source):
-        second_source_name = os.path.splitext(os.path.basename(second_source))[0]
-    else:
-        second_source_name = second_source
-        if second_source_name not in VALID_SOURCE_ABBREVS:
-            raise ValueError(f'Second source keyword {second_source_name} not recognized')
-    return first_source_name, second_source_name
+#TODO: figure out how to get in params like 
+# ephys_fs=ephys_fs,
+                    # mkv_chunk_size=mkv_chunk_size,
+                    # basler_chunk_size=basler_chunk_size,
+                    # avi_chunk_size=avi_chunk_size,
+
+def sync_two_sources(matches,
+ first_source_led_codes, 
+ first_source_name, 
+ first_source_full_timestamps, 
+ second_source_led_codes, 
+ second_source_name, 
+ second_source_full_timestamps, 
+ save_path,
+ sources_to_predict=None,
+ overwrite_models=False):
+    
+    if sources_to_predict is None:
+        sources_to_predict = []
+
+    # Rename for clarity.
+    ground_truth_source1_event_times = matches[:,0]
+    ground_truth_source2_event_times = matches[:,1]
+    
+    # Model first source from second soure, and vice versa.
+    # I'm sure there's a cleaner way to do this, but it works for now.
+    # s1 and s2 match in shape, and represent matched timestamps.
+    # t1 and t2 don't match in shape, and represent all codes detected in each channel.
+    for i in range(2):
+        if i == 0:
+            s1 = ground_truth_source1_event_times
+            t1 = first_source_led_codes
+            n1 = first_source_name
+            full1 = first_source_full_timestamps
+            s2 = ground_truth_source2_event_times
+            t2 = second_source_led_codes
+            n2 = second_source_name
+            full2 = second_source_full_timestamps
+    
+        elif i == 1:
+            s1 = ground_truth_source2_event_times
+            t1 = second_source_led_codes
+            n1 = second_source_name
+            full1 = first_source_full_timestamps
+            s2 = ground_truth_source1_event_times
+            t2 = first_source_led_codes
+            n2 = first_source_name
+            full2 = first_source_full_timestamps
+    
+        # Learn to predict s1 from s2. Syntax is fit(X,Y).
+        mdl = PiecewiseRegressor(verbose=True,
+                                binner=KBinsDiscretizer(n_bins=4))
+        mdl.fit(s2.reshape(-1, 1), s1)
+    
+        outname = f'{n1}_from_{n2}'
+    
+        # Verify accuracy of predicted event times
+        predicted_event_times = mdl.predict(s2.reshape(-1, 1))
+        time_errors = predicted_event_times - s1 
+        viz.plot_model_errors(time_errors, save_path, outname)
+    
+        # Plot all predicted times
+        all_predicted_times = mdl.predict(t2[:,0].reshape(-1, 1))  # t1-timebase times of t2 codes (predict t1 from t2)
+        viz.plot_matched_times(all_predicted_times, t2, t1, n1, n2, save_path, outname)
+    
+        # Save
+        fname = join(save_path,f'{outname}.p')
+        if exists(fname) and not overwrite_models:
+            print(f'Model that predicts {n1} from {n2} already exists, not saving...')
+        else:
+            joblib.dump(mdl, fname)
+            print(f'Saved model that predicts {n1} from {n2}')
+    
+        # Compute and save the full synced timestamps.
+        # Eg: if we're predicting timestamps for oe from txt, it will return a list of times of length (num times in txt file), where each entry is the corresponding time in the ephys file
+        # I would recommend not predicting timestamps from oe, as it will be ~ 1GB.
+        if str(i+1) in sources_to_predict:
+            fout = join(save_path,f'{outname}_fullTimes.npy')
+            if not exists(fout) or overwrite_models:
+                print(f'Computing full synced timestamp list for {n1} from {n2} (this may take a while...)')
+                full_predicted_s1 = mdl.predict(full2.reshape(-1,1))
+                np.save(fout, full_predicted_s1)
+            else:
+                print(f'Full synced timestamp list for {n1} from {n2} already exists, continuing...')
+
+    return 
 
 
 def main_function(base_path,
@@ -141,7 +208,7 @@ sources_to_predict=None):
         os.makedirs(save_path)
 
     # Detect whether the user passed paths to source files, or used abbreviations
-    first_source_name, second_source_name = verify_sources(first_source, second_source)
+    first_source_name, second_source_name = util.verify_sources(first_source, second_source)
 
     if (first_source_name in ['arduino', 'txt']) and (second_source_name in ['arduino', 'txt']):
         raise ValueError('Cannot pass arduino/txt for both sources, as this is ambiguous. Use explicit paths to both files.')
@@ -185,7 +252,6 @@ sources_to_predict=None):
    
 
 
-
     # Sanity check on timestamps being in seconds
     first_source_full_timestamps = np.array(first_source_full_timestamps)
     assert (first_source_full_timestamps[-1] - first_source_full_timestamps[0]) < 7200, f"Your timestamps for {first_source} appear to span more than two hours...are you sure the timestamps are in seconds?"
@@ -193,16 +259,12 @@ sources_to_predict=None):
     second_source_full_timestamps = np.array(second_source_full_timestamps)
     assert (second_source_full_timestamps[-1] - second_source_full_timestamps[0]) < 7200, f"Your timestamps for {second_source} appear to span more than two hours...are you sure the timestamps are in seconds?"
 
-    
     # Save the codes for use later
     np.savez(f'{save_path}/codes_{first_source_name}_and_{second_source_name}.npz', first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
-
 
     # Visualize a small chunk of the bit codes. do you see a match? 
     # Codes array should have times in seconds by this point
     viz.plot_code_chunk(first_source_led_codes, first_source_name, second_source_led_codes, second_source_name, save_path)
-
-
 
 
     #### SYNCING :D ####
@@ -219,72 +281,12 @@ sources_to_predict=None):
     ## Plot the matched codes against each other:
     viz.plot_matched_scatter(matches, first_source_name, second_source_name, save_path)
 
-
     #### Make the models! ####
     print('Modeling the two sources from each other...')
-
-    # Rename for clarity.
-    ground_truth_source1_event_times = matches[:,0]
-    ground_truth_source2_event_times = matches[:,1]
-    
-    # Model first source from second soure, and vice versa.
-    # I'm sure there's a cleaner way to do this, but it works for now.
-    # s1 and s2 match in shape, and represent matched timestamps.
-    # t1 and t2 don't match in shape, and represent all codes detected in each channel.
-    for i in range(2):
-        if i == 0:
-            s1 = ground_truth_source1_event_times
-            t1 = first_source_led_codes
-            n1 = first_source_name
-            full1 = first_source_full_timestamps
-            s2 = ground_truth_source2_event_times
-            t2 = second_source_led_codes
-            n2 = second_source_name
-            full2 = second_source_full_timestamps
-
-        elif i == 1:
-            s1 = ground_truth_source2_event_times
-            t1 = second_source_led_codes
-            n1 = second_source_name
-            full1 = first_source_full_timestamps
-            s2 = ground_truth_source1_event_times
-            t2 = first_source_led_codes
-            n2 = first_source_name
-            full2 = first_source_full_timestamps
-
-        # Learn to predict s1 from s2. Syntax is fit(X,Y).
-        mdl = PiecewiseRegressor(verbose=True,
-                                binner=KBinsDiscretizer(n_bins=4))
-        mdl.fit(s2.reshape(-1, 1), s1)
-
-        outname = f'{n1}_from_{n2}'
-
-        # Verify accuracy of predicted event times
-        predicted_event_times = mdl.predict(s2.reshape(-1, 1))
-        time_errors = predicted_event_times - s1 
-        viz.plot_model_errors(time_errors, save_path, outname)
-
-        # Plot all predicted times
-        all_predicted_times = mdl.predict(t2[:,0].reshape(-1, 1))  # t1-timebase times of t2 codes (predict t1 from t2)
-        viz.plot_matched_times(all_predicted_times, t2, t1, n1, n2, save_path, outname)
-
-        # Save
-        joblib.dump(mdl, join(save_path,f'{outname}.p'))
-        print(f'Saved model that predicts {n1} from {n2}')
-
-        # Compute and save the full synced timestamps.
-        # Eg: if we're predicting timestamps for oe from txt, it will return a list of times of length (num times in txt file), where each entry is the corresponding time in the ephys file
-        # I would recommend not predicting timestamps from oe, as it will be ~ 1GB.
-        if str(i+1) in sources_to_predict:
-            fout = join(save_path,f'{outname}_fullTimes.npy')
-            if not exists(fout) or overwrite_models:
-                print(f'Computing full synced timestamp list for {n1} from {n2} (this may take a while...)')
-                full_predicted_s1 = mdl.predict(full2.reshape(-1,1))
-                np.save(fout, full_predicted_s1)
-            else:
-                print(f'Full synced timestamp list for {n1} from {n2} already exists, continuing...')
+    sync_two_sources(matches, first_source_led_codes, first_source_name, first_source_full_timestamps, second_source_led_codes, second_source_name, second_source_full_timestamps, save_path, sources_to_predict, overwrite_models)
 
     print('Syncing complete. FIN')
+
 
 def load_oe_data(base_path):
     ephys_ttl_path = glob(join(base_path, '**', 'TTL_*/'), recursive = True)[0]
@@ -292,12 +294,14 @@ def load_oe_data(base_path):
     ephys_TTL_timestamps = np.load(join(ephys_ttl_path, 'timestamps.npy'))  # these are in sample number
     return channels, ephys_TTL_timestamps
 
+
 def oe_workflow(base_path, num_leds, leds_to_use, led_blink_interval, ephys_fs=3e4):
     """
     
     """
     # assert num_leds==4, "TTL code expects 4 LED channels, other nums of channels not yet supported"
-    assert num_leds == len(leds_to_use)
+    if num_leds != len(leds_to_use):
+        raise ValueError('Num leds must match length of leds to use!')
 
     # Load the TTL data
     channels, ephys_TTL_timestamps = load_oe_data(base_path)
@@ -342,13 +346,17 @@ source_timescale_factor_log10=3):
     """
     print('Doing arduino workflow...')
 
-    assert num_leds == len(leds_to_use)
+    if num_leds != len(leds_to_use):
+        raise ValueError('Num leds must match length of leds to use!')
+
     if arduino_spec: 
-        arduino_colnames, arduino_dtypes = get_col_info(arduino_spec)
+        arduino_colnames, arduino_dtypes = util.get_col_info(arduino_spec)
         ino_data = load_arduino_data(base_path, arduino_colnames, arduino_dtypes, file_glob=file_glob)
     else:
         ino_data = load_arduino_data(base_path, file_glob=file_glob)
     ino_timestamps = ino_data.time / (10**source_timescale_factor_log10)  # these are in milliseconds, convert to seconds
+
+
 
     # led_names = ['led1', 'led2', 'led3', 'led4']
     led_names = [colname for colname in ino_data.columns if "led" in colname]
@@ -358,11 +366,9 @@ source_timescale_factor_log10=3):
         led_list.append(ino_data[led_names[int(idx) - 1]])
 
     
-
     ino_events = list_to_events(ino_timestamps, led_list, tskip=timestamp_jump_skip_event_threshhold)
     ino_codes, _ = sync.events_to_codes(ino_events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))  # I think as long as the column 'timestamps' in events and the minCodeTime are in the same units, it's fine (for ephys, its nsamples, for arudino, it's ms)
     ino_codes = np.asarray(ino_codes)
-    ino_codes[:,0] = ino_codes[:,0]
 
     return ino_codes, ino_timestamps 
 
@@ -392,7 +398,9 @@ def basler_bonsai_workflow(base_path,
         timestamp_jump_skip_event_threshhold (int): if there is a jump in timestamps larger than this (in seconds), skip any artifactual "event" that might arise because of it.
     """
     print('Doing bonsai basler workflow...')
-    assert num_leds == len(leds_to_use)
+    
+    if num_leds != len(leds_to_use):
+        raise ValueError('Num leds must match length of leds to use!')
     
     txt_data = load_arduino_data(base_path, file_glob=file_glob)
     bonsai_timestamps = txt_data.time / (10**source_timescale_factor_log10)  # these are in NANOseconds, convert to seconds
