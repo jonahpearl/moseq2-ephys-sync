@@ -33,14 +33,12 @@ To run an extraction, for example: (note that we don't pass an arduino timescale
 
 ```moseq2_ephys_sync -i /n/groups/datta/Jonah/moseq2-ephys-sync/test_data/ino_basler_test -s1 arduino -s2 basler_bonsai --s2-timescale-factor-log10 9 -o sync```
 
-This will extract the IR LED data from the video and ephys files, find matches in the resulting bit codes, plot the results in `/input_directory/sync/` and save two models that can be used for translating between the two timebases: `video_model.p` which takes as inputs video times (in seconds) and translates them into ephys times; and `ephys_model.p` which conversely takes in ephys times (in seconds) and translated them into video times. 
+This will extract the IR LED data from the video and ephys files, find matches in the resulting bit codes, plot the results in `/input_directory/sync/` and save two models that can be used for translating between the two timebases: `basler_bonsai_from_arduino.p` which takes as inputs arduino times (in seconds) and translates them into basler times; and `arduino_from_basler_bonsai.p` which conversely takes in basler times (in seconds) and translates them into arduino times. 
 
 To use the resulting models, be sure to transform all values to be in seconds before inputting to the models, and if using ephys data, be sure to use zero-subtracted data (i.e. the first value should be 0). Try:
 1. `import joblib`
-2. `ephys_model = joblib.load('input_directory/sync/ephys_timebase.p')`
-3. `video_times = ephys_model.predict(ephys_times.reshape(-1,1))` (assuming times are `1D` arrays)
-4. `video_model = joblib.load('input_directory/sync/video_timebase.p')`
-5. `ephys_times = video_model.predict(video_times.reshape(-1,1))`
+2. `mdl = joblib.load('[input_directory]/sync/basler_bonsai_from_arduino.p')`
+3. `video_times = mdl.predict(desired_times.reshape(-1,1))` (assuming desired_times is a `1D` array)
 
 
 
