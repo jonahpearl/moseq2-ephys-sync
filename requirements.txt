@@ -8,3 +8,4 @@ ipython
 numpy
 scikit-learn
 matplotlib
+click
