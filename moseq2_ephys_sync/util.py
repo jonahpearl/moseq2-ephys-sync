@@ -1,11 +1,32 @@
+from os.path import join, exists
 import os
 from glob import glob
 import pdb
+import numpy as np
+from warnings import warn
+from moseq2_ephys_sync.workflows import get_valid_source_abbrevs
 
 def remove_confounders(files, ext):
     if ext == 'txt':
         files = [f for f in files if ('depth_ts.txt' not in f)]
     return files
+
+def verify_sources(first_source, second_source):
+    if exists(first_source):
+        first_source_name = os.path.splitext(os.path.basename(first_source))[0]
+    else:
+        first_source_name = first_source
+        if first_source_name not in get_valid_source_abbrevs():
+            raise ValueError(f'First source keyword {first_source_name} not recognized')
+    if exists(second_source):
+        second_source_name = os.path.splitext(os.path.basename(second_source))[0]
+    else:
+        second_source_name = second_source
+        if second_source_name not in get_valid_source_abbrevs():
+            raise ValueError(f'Second source keyword {second_source_name} not recognized')
+    return first_source_name, second_source_name
+
+
 
 def find_file_through_glob_and_symlink(path, pattern):
     """Returns path to file found that matches pattern in path, or tries to follow symlink to raw data. Must only be one that matches!
