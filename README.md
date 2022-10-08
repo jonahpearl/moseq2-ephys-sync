@@ -30,7 +30,8 @@ Here are the other CLI options that are a bit more niche. These mostly have to d
 * @click.option('--s2-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 2 led rois")
 
 To run an extraction, for example: (note that we don't pass an arduino timescale because I know the default will work; but you can pass it for every source and it won't hurt)
-`moseq2_ephys_sync -i /n/groups/datta/Jonah/moseq2-ephys-sync/test_data/ino_basler_test -s1 arduino -s2 basler_bonsai --s2-timescale-factor-log10 9 -o sync`
+
+```moseq2_ephys_sync -i /n/groups/datta/Jonah/moseq2-ephys-sync/test_data/ino_basler_test -s1 arduino -s2 basler_bonsai --s2-timescale-factor-log10 9 -o sync```
 
 This will extract the IR LED data from the video and ephys files, find matches in the resulting bit codes, plot the results in `/input_directory/sync/` and save two models that can be used for translating between the two timebases: `video_model.p` which takes as inputs video times (in seconds) and translates them into ephys times; and `ephys_model.p` which conversely takes in ephys times (in seconds) and translated them into video times. 
 
