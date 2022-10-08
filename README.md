@@ -11,32 +11,26 @@ To get started, try the following in termanal (these instructions assume you're 
 6. `pip install -e .`
 9. [if using video modules] `module load ffmpeg`
 
-The script assumes your input folder structure looks like this:
-```
-/input_directory/
-│   
-│       
-│
-└───ephys_folder/ (this might be e.g. Record Node 10X/ or experiment1/ depending on the version of the Open Ephys GUI you're using) 
-│   │
-│   └───recording1/
-│       │
-│       └───events/
-│           │
-│           └───Rhythm_FPGA-10X.0/
-│               │
-│               └───TTL_1/
-│                     channel_states.npy
-│                     channels.npy
-│                     full_words.npy
-│                     timestamps.npy
-│                   
-│
-└───depth.mkv (can be named anything, with an .mkv extension)
-```
+Here is a janky copy/paste of the current frequently used CLI options to stand in for better documentation:
+@click.option('--input-path', '-i', type=str)
+@click.option('-s1', '--first-source', type=str)
+@click.option('-s2', '--second-source', type=str)
+@click.option('-o', '--output-dir-name', type=str, default='sync')
+@click.option('--led-blink-interval', type=int, default=5, help='LED change interval, in seconds')
+@click.option('--s1-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
+@click.option('--s2-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
+@click.option('--overwrite-models', is_flag=True)
+@click.option('--leds_to_use', cls=PythonLiteralOption, default='["1", "2", "3", "4"]', help='Subset of leds (1-indexed) to use (eg if one was broken) (syntax: --leds_to_use ["1", "2", "3", "4"]')
+@click.option('--predict_full_timestamps_of_source', '-r', multiple=True, default=None, help='Choose which sources (1, 2, or both) to predict full list of times for (syntax: ...of_source 1 2 --next_arg')
+
+Here are the other CLI options that are a bit more niche. These mostly have to do with getting the led info from videos:
+@click.option('--overwrite_extraction', is_flag=True)
+@click.option('--led-loc', type=str, help="Location of the syncing LEDs in the video, as seen from plt.imshow()'s point of view. Currenly supported: quadrants (topright, topleft, bottomright, bottomleft), some vertical strips (rightquarter, leftquarter), some horizontal strips (topquarter, topthird, bottomquarter). Add more in extract_leds.py.")
+@click.option('--s1-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 1 led rois")
+@click.option('--s2-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 2 led rois")
 
 To run an extraction:
-`python main.py -path /input_directory/`
+`moseq2_ephys_sync -path /input_directory/ [more options]`
 
 This will extract the IR LED data from the video and ephys files, find matches in the resulting bit codes, plot the results in `/input_directory/sync/` and save two models that can be used for translating between the two timebases: `video_model.p` which takes as inputs video times (in seconds) and translates them into ephys times; and `ephys_model.p` which conversely takes in ephys times (in seconds) and translated them into video times. 
 
@@ -51,6 +45,6 @@ To use the resulting models, be sure to transform all values to be in seconds be
 
 Notes on using the models:
 Different workflows transform their inputs in certain ways to help with downstream analysis.
-1) All workflows convert timestamps into seconds. This does make certain assumptions that are currently hard-coded, specifically, it is assumed that the arduino timestamps are in milliseconds; it is assumed that ephys is sampled at 30 kHz; it is assumed that AVI timestamps (`device_timestamps.npy` from CW's pyk4a script) are in microseconds; and that mkv / basler timestamps are already in seconds. Currently, no options exist to override these defaults, so if you need to, I'd make a new branch and edit them.
+1) All workflows convert timestamps into seconds. This does make certain assumptions that are currently hard-coded, specifically, it is assumed that the arduino timestamps are in milliseconds; it is assumed that ephys is sampled at 30 kHz; it is assumed that AVI timestamps (`device_timestamps.npy` from CW's pyk4a script) are in microseconds; and that mkv / basler timestamps are already in seconds.
 2) The TTL workflow has the first time subtracted, such that it begins at 0. This allows it to play nicely with an open ephys glitch.
 
