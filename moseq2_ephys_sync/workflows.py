@@ -332,7 +332,7 @@ led_blink_interval,
 arduino_spec=None, 
 timestamp_jump_skip_event_threshhold=0.1, 
 file_glob='*.txt',
-source_timescale_factor_log10=3):
+source_timescale_factor_log10=None):
     """
     Workflow to get codes from arduino txt file. Note arduino sampling rate is calculated empirically below because it's not stable from datapoint to datapoint.
     
@@ -348,6 +348,9 @@ source_timescale_factor_log10=3):
 
     if num_leds != len(leds_to_use):
         raise ValueError('Num leds must match length of leds to use!')
+
+    if source_timescale_factor_log10 is None:
+        source_timescale_factor_log10 = 3
 
     if arduino_spec: 
         arduino_colnames, arduino_dtypes = util.get_col_info(arduino_spec)
@@ -379,7 +382,7 @@ def basler_bonsai_workflow(base_path,
     led_blink_interval, 
     timestamp_jump_skip_event_threshhold=0.1, 
     file_glob='basler*.csv',
-    source_timescale_factor_log10=9):
+    source_timescale_factor_log10=None):
     """
     Workflow to get codes from bonsai outputted txt file. 
 
@@ -402,6 +405,9 @@ def basler_bonsai_workflow(base_path,
     if num_leds != len(leds_to_use):
         raise ValueError('Num leds must match length of leds to use!')
     
+    if source_timescale_factor_log10 is None:
+        source_timescale_factor_log10 = 9
+
     txt_data = load_arduino_data(base_path, file_glob=file_glob)
     bonsai_timestamps = txt_data.time / (10**source_timescale_factor_log10)  # these are in NANOseconds, convert to seconds
 
