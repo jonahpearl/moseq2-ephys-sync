@@ -23,6 +23,8 @@ class PythonLiteralOption(click.Option):
 @click.option('-o', '--output-dir-name', type=str, default='sync')
 @click.option('--led-loc', type=str, help="Location of the syncing LEDs in the video, as seen from plt.imshow()'s point of view. Currenly supported: quadrants (topright, topleft, bottomright, bottomleft), some vertical strips (rightquarter, leftquarter), some horizontal strips (topquarter, topthird, bottomquarter). Add more in extract_leds.py.")
 @click.option('--led-blink-interval', type=int, default=5, help='LED change interval, in seconds')
+@click.option('--s1-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
+@click.option('--s2-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
 @click.option('--arduino-spec', type=str, help="DEPRECATED: use header instead! Currently supported: fictive_olfaction, odor_on_wheel, basic_thermistor")
 @click.option('--s1-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 1 led rois")
 @click.option('--s2-led-rois-from-file', is_flag=True, help="Flag to look for lists of points for source 2 led rois")
@@ -38,6 +40,8 @@ def main(input_path=None,
     output_dir_name='sync',
     led_loc=None, 
     led_blink_interval=5, 
+    s1_timescale_factor_log10=None,
+    s2_timescale_factor_log10=None,
     arduino_spec=None, 
     s1_led_rois_from_file=False,
     s2_led_rois_from_file=False, 
@@ -58,6 +62,8 @@ def main(input_path=None,
             output_dir_name=output_dir_name,
             led_loc=led_loc, 
             led_blink_interval=led_blink_interval, 
+            s1_timescale_factor_log10=s1_timescale_factor_log10,
+            s2_timescale_factor_log10=s2_timescale_factor_log10,
             arduino_spec=arduino_spec, 
             s1_led_rois_from_file=s1_led_rois_from_file,
             s2_led_rois_from_file=s2_led_rois_from_file, 
