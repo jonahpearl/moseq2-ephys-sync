@@ -443,7 +443,7 @@ def get_events(leds, timestamps):
 
         for direction_sign in direction_signs:
 
-            times_of_dir = timestamps[np.where(leds[channel,:] == direction_sign)]  #np.where(leds[channel,:] == direction_sign)[0] + time_offset ## turned off or on
+            times_of_dir = timestamps[np.where(leds[channel,:] == direction_sign)[0]]  #np.where(leds[channel,:] == direction_sign)[0] + time_offset ## turned off or on
                         
             times.append(times_of_dir)
             channels.append(np.repeat(channel,times_of_dir.shape[0]))
@@ -454,6 +454,6 @@ def get_events(leds, timestamps):
     channels = np.hstack(channels).astype('int')
     directions = np.hstack(directions).astype('int')
     sorting = np.argsort(times)
-    events = np.vstack([times[sorting],channels[sorting],directions[sorting]]).T
+    events = np.vstack([times[sorting], channels[sorting], directions[sorting]]).T
       
     return events
