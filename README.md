@@ -15,7 +15,7 @@ Here is a janky copy/paste of the current frequently used CLI options to stand i
 * @click.option('--input-path', '-i', type=str)
 * @click.option('-s1', '--first-source', type=str)
 * @click.option('-s2', '--second-source', type=str)
-* @click.option('-o', '--output-dir-name', type=str, default='sync')
+* @click.option('-o', '--output-dir-name', type=str, default='sync', help='Relative path to output, from input')
 * @click.option('--led-blink-interval', type=int, default=5, help='LED change interval, in seconds')
 * @click.option('--s1-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
 * @click.option('--s2-timescale-factor-log10', type=int, help='If in ms, use 3; us, use 6; etc.')
