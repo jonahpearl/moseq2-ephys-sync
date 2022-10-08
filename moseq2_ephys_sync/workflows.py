@@ -13,6 +13,7 @@ import pdb
 
 def get_valid_source_abbrevs():
     return ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_bonsai', 'avi']
+    
 def process_source(source,
                     base_path=None,
                     save_path=None,
@@ -124,12 +125,12 @@ def sync_two_sources(matches,
         viz.plot_matched_times(all_predicted_times, t2, t1, n1, n2, save_path, outname)
     
         # Save
-        fname = join(save_path,f'{outname}.p')
+        fname = join(save_path, f'{outname}.p')
         if exists(fname) and not overwrite_models:
             print(f'Model that predicts {n1} from {n2} already exists, not saving...')
         else:
             joblib.dump(mdl, fname)
-            print(f'Saved model that predicts {n1} from {n2}')
+            print(f'Saved model that predicts {n1} from {n2} to {fname}')
     
         # Compute and save the full synced timestamps.
         # Eg: if we're predicting timestamps for oe from txt, it will return a list of times of length (num times in txt file), where each entry is the corresponding time in the ephys file
@@ -160,7 +161,8 @@ s2_led_rois_from_file=False,
 overwrite_models=False,
 overwrite_extraction=False,
 leds_to_use=[1,2,3,4],
-sources_to_predict=None):
+sources_to_predict=None,
+pytesting=False):
 
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
@@ -204,7 +206,7 @@ sources_to_predict=None):
 
     # Set up save path
     save_path = join(base_path, output_dir_name)
-    if not exists(save_path):
+    if not exists(save_path) and not pytesting:
         os.makedirs(save_path)
 
     # Detect whether the user passed paths to source files, or used abbreviations
@@ -220,7 +222,7 @@ sources_to_predict=None):
     if model_exists_bool and not overwrite_models:
         raise ValueError("One or both models already exist and overwrite_models is false!")
 
-    print('Dealing with first souce...')
+    print(f'Dealing with first souce: {first_source_name}...')
     # first_source_led_codes: array of reconstructed pixel clock codes where: codes[:,0] = time, codes[:,1] = code (and codes[:,2] = trigger channel but that's not used in this code)
     # first_source_full_timestamps: full list of timestamps from source 1 (every timestamp, not just event times! For prediction with the model at the end.)
     first_source_led_codes, first_source_full_timestamps = \
@@ -236,7 +238,7 @@ sources_to_predict=None):
                     arduino_spec=arduino_spec
                     )
 
-    print('Dealing with second souce...')
+    print(f'Dealing with second souce: {second_source_name}...')
     second_source_led_codes, second_source_full_timestamps = \
     process_source(second_source,
                     base_path=base_path,
@@ -260,14 +262,16 @@ sources_to_predict=None):
     assert (second_source_full_timestamps[-1] - second_source_full_timestamps[0]) < 7200, f"Your timestamps for {second_source} appear to span more than two hours...are you sure the timestamps are in seconds?"
 
     # Save the codes for use later
-    np.savez(f'{save_path}/codes_{first_source_name}_and_{second_source_name}.npz', first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
+    if not pytesting:
+        np.savez(join(save_path, f'codes_{first_source_name}_and_{second_source_name}.npz'), first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
 
     # Visualize a small chunk of the bit codes. do you see a match? 
     # Codes array should have times in seconds by this point
-    viz.plot_code_chunk(first_source_led_codes, first_source_name, second_source_led_codes, second_source_name, save_path)
+    if not pytesting:
+        viz.plot_code_chunk(first_source_led_codes, first_source_name, second_source_led_codes, second_source_name, save_path)
 
 
-    #### SYNCING :D ####
+    # SYNCING 
     print('Syncing the two sources...')
     # Returns two columns of matched event times. All times must be in seconds by here
     matches = np.asarray(sync.match_codes(first_source_led_codes[:,0],  
@@ -278,14 +282,20 @@ sources_to_predict=None):
 
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 
-    ## Plot the matched codes against each other:
-    viz.plot_matched_scatter(matches, first_source_name, second_source_name, save_path)
+    if not pytesting:
+        # Plot the matched codes against each other
+        viz.plot_matched_scatter(matches, first_source_name, second_source_name, save_path)
 
-    #### Make the models! ####
-    print('Modeling the two sources from each other...')
-    sync_two_sources(matches, first_source_led_codes, first_source_name, first_source_full_timestamps, second_source_led_codes, second_source_name, second_source_full_timestamps, save_path, sources_to_predict, overwrite_models)
+        # Make the models! 
+        print('Modeling the two sources from each other...')
+        sync_two_sources(matches, first_source_led_codes, first_source_name, first_source_full_timestamps, second_source_led_codes, second_source_name, second_source_full_timestamps, save_path, sources_to_predict, overwrite_models)
+        print('Syncing complete. FIN')
+        return 
 
-    print('Syncing complete. FIN')
+    elif pytesting:
+        fname = './tests/tmp_matches.npy'
+        np.save(fname, matches)
+        return
 
 
 def load_oe_data(base_path):
