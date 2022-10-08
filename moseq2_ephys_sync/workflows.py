@@ -43,17 +43,17 @@ def process_source(source,
         source_led_codes, source_full_timestamps = workflows.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, led_rois_from_file, overwrite_extraction)
 
     elif source == 'arduino' or source=='txt':
-        source_led_codes, source_full_timestamps = workflows.arduino_workflow(base_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
+        source_led_codes, source_full_timestamps = workflows.arduino_workflow(base_path, num_leds, leds_to_use, led_blink_interval, arduino_spec=arduino_spec, source_timescale_factor_log10=source_timescale_factor_log10)
 
     elif source.endswith('.csv') or source.endswith('.txt'):
-        source_led_codes, source_full_timestamps = workflows.arduino_workflow(source, num_leds, leds_to_use, led_blink_interval, arduino_spec)
+        source_led_codes, source_full_timestamps = workflows.arduino_workflow(source, num_leds, leds_to_use, led_blink_interval, arduino_spec=arduino_spec, source_timescale_factor_log10=source_timescale_factor_log10)
 
     elif source == 'basler':
         assert not (led_loc and led_rois_from_file), "User cannot specify both Basler led location (top right, etc) and list of exact Basler LED ROIs!"
-        source_led_codes, source_full_timestamps = vid_workflows.basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc, basler_chunk_size, led_rois_from_file, overwrite_extraction)
+        source_led_codes, source_full_timestamps = vid_workflows.basler_workflow(base_path, num_leds, led_blink_interval, led_loc, basler_chunk_size, led_rois_from_file, overwrite_extraction)
 
     elif source == 'basler_bonsai':
-        source_led_codes, source_full_timestamps = workflows.basler_bonsai_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval)
+        source_led_codes, source_full_timestamps = workflows.basler_bonsai_workflow(base_path, num_leds, leds_to_use, led_blink_interval, source_timescale_factor_log10=source_timescale_factor_log10)
 
     elif source == 'avi':
         assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
@@ -85,6 +85,8 @@ second_source,
 output_dir_name='sync',
 led_loc=None, 
 led_blink_interval=5, 
+s1_timescale_factor_log10=None,
+s2_timescale_factor_log10=None,
 arduino_spec=None, 
 s1_led_rois_from_file=False,
 s2_led_rois_from_file=False, 
@@ -160,10 +162,7 @@ sources_to_predict=None):
                     save_path=save_path, num_leds=num_leds,
                     leds_to_use=leds_to_use,
                     led_blink_interval=led_blink_interval, 
-                    ephys_fs=ephys_fs,
-                    mkv_chunk_size=mkv_chunk_size,
-                    basler_chunk_size=basler_chunk_size,
-                    avi_chunk_size=avi_chunk_size,
+                    source_timescale_factor_log10=s1_timescale_factor_log10,
                     led_loc=led_loc,
                     led_rois_from_file=s1_led_rois_from_file,
                     overwrite_extraction=overwrite_extraction,
@@ -177,10 +176,7 @@ sources_to_predict=None):
                     save_path=save_path, num_leds=num_leds,
                     leds_to_use=leds_to_use,
                     led_blink_interval=led_blink_interval, 
-                    ephys_fs=ephys_fs,
-                    mkv_chunk_size=mkv_chunk_size,
-                    basler_chunk_size=basler_chunk_size,
-                    avi_chunk_size=avi_chunk_size,
+                    source_timescale_factor_log10=s2_timescale_factor_log10,
                     led_loc=led_loc,
                     led_rois_from_file=s2_led_rois_from_file,
                     overwrite_extraction=overwrite_extraction,
@@ -325,7 +321,14 @@ def oe_workflow(base_path, num_leds, leds_to_use, led_blink_interval, ephys_fs=3
 
 
 
-def arduino_workflow(base_path, num_leds, leds_to_use, led_blink_interval, arduino_spec=None, timestamp_jump_skip_event_threshhold=0.1, file_glob='*.txt'):
+def arduino_workflow(base_path,
+num_leds, 
+leds_to_use, 
+led_blink_interval, 
+arduino_spec=None, 
+timestamp_jump_skip_event_threshhold=0.1, 
+file_glob='*.txt',
+source_timescale_factor_log10=3):
     """
     Workflow to get codes from arduino txt file. Note arduino sampling rate is calculated empirically below because it's not stable from datapoint to datapoint.
     
@@ -345,7 +348,7 @@ def arduino_workflow(base_path, num_leds, leds_to_use, led_blink_interval, ardui
         ino_data = load_arduino_data(base_path, arduino_colnames, arduino_dtypes, file_glob=file_glob)
     else:
         ino_data = load_arduino_data(base_path, file_glob=file_glob)
-    ino_timestamps = ino_data.time / 1000  # these are in milliseconds, convert to seconds
+    ino_timestamps = ino_data.time / (10**source_timescale_factor_log10)  # these are in milliseconds, convert to seconds
 
     # led_names = ['led1', 'led2', 'led3', 'led4']
     led_names = [colname for colname in ino_data.columns if "led" in colname]
@@ -364,7 +367,13 @@ def arduino_workflow(base_path, num_leds, leds_to_use, led_blink_interval, ardui
     return ino_codes, ino_timestamps 
 
 
-def basler_bonsai_workflow(base_path, num_leds, leds_to_use, led_blink_interval, timestamp_jump_skip_event_threshhold=0.1, file_glob='basler*.csv'):
+def basler_bonsai_workflow(base_path,
+    num_leds,
+    leds_to_use,
+    led_blink_interval, 
+    timestamp_jump_skip_event_threshhold=0.1, 
+    file_glob='basler*.csv',
+    source_timescale_factor_log10=9):
     """
     Workflow to get codes from bonsai outputted txt file. 
 
@@ -386,7 +395,7 @@ def basler_bonsai_workflow(base_path, num_leds, leds_to_use, led_blink_interval,
     assert num_leds == len(leds_to_use)
     
     txt_data = load_arduino_data(base_path, file_glob=file_glob)
-    bonsai_timestamps = txt_data.time / 1e9  # these are in MICROseconds, convert to seconds
+    bonsai_timestamps = txt_data.time / (10**source_timescale_factor_log10)  # these are in NANOseconds, convert to seconds
 
     led_names = ['led1', 'led2', 'led3', 'led4']
     led_list = []
