@@ -19,8 +19,9 @@ def test_oe_loading():
 
 def test_oe_workflow():
     codes, continuous_timestamps = workflows.oe_workflow(PATH_TO_TEST_DATA, num_leds=4, leds_to_use=[1,2,3,4], led_blink_interval=5, ephys_fs=3e4)
-    code_times = [x for x,y,z in codes]
-    codes_vals = [y for x,y,z in codes] 
+    code_times = [x for x,y,z,i in codes]
+    codes_vals = [y for x,y,z,i in codes] 
+    codes_idx = [int(i) for x,y,z,i in codes]
     assert codes_vals[0] == 11
     assert codes_vals[1] == 7
     assert codes_vals[2] == 15
@@ -32,3 +33,6 @@ def test_oe_workflow():
 
     assert continuous_timestamps[0] == 0
     assert np.allclose(np.diff(continuous_timestamps), 3.3333333e-05)
+
+    print(codes_idx[0])
+    assert np.allclose(continuous_timestamps[codes_idx[0]], code_times[0])

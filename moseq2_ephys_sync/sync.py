@@ -15,6 +15,7 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
             events[:,0] = times (in n samples??)
             events[:,1] = channels
             events[:,2] = directions
+            events[:,3] = idx
     nchannels : int
         Number of pixel clock channels
     minCodeTime : int
@@ -27,13 +28,14 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
             codes[:,0] = time
             codes[:,1] = code
             codes[:,2] = trigger channel
+            codes[:,3] = idx in original data
         These codes are NOT offset for latencies of the triggered channel
     latencies : nchannels x nchannels list of lists
         List of channel-to-channel latencies measured from events.
         Should be used with offset_codes to correct code times for the triggered channel
     """
     assert len(events) > 0, "Events cannot be 0 length"
-    assert len(events[0]) == 3, "Each event should be of length 3 not %i" % len(events[0])
+    assert len(events[0]) == 4, "Each event should be of length 4 not %i" % len(events[0])
 
     evts = np.array(copy.deepcopy(events))
     evts = evts[evts[:,0].argsort(),:] # sort events
@@ -49,6 +51,7 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
     trigTime = evts[0,0]
     trigChannel = int(evts[0,1])
     trigDirection = int(evts[0,2])
+    trigIdx = int(evts[0,3])
     codes = []
     
     latencies = [ [ [] for x in range(nchannels)] for y in range(nchannels)]
@@ -58,10 +61,13 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
             code = state_to_code(state)
             
 
-            codes.append((trigTime, code, trigChannel))
+            # codes.append((trigTime, code, trigChannel))
+            codes.append((trigTime, code, trigChannel, trigIdx))
             trigTime = ev[0]
             trigChannel = int(abs(ev[1]))
             trigDirection = int(ev[2])
+            trigIdx = int(ev[3])
+
         # update state
         ch = int(abs(ev[1])) ## the channel on which this event happened. [0 or 1]
         state[ch] += int(ev[2]) ## += [-1 or +1]... 
@@ -80,9 +86,8 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
     code = state_to_code(state)
 
     if code != codes[-1][1]:
-        codes.append((trigTime, code, trigChannel))
-    
-
+        # codes.append((trigTime, code, trigChannel))
+        codes.append((trigTime, code, trigChannel, trigIdx))
 
     return codes, latencies
 
@@ -104,7 +109,7 @@ def state_to_code(state):
     return sum([state[i] << i for i in range(len(state))]) # << = bit shift operator
 
 
-def match_codes(auTimes, auCodes, mwTimes, mwCodes, minMatch = 5, maxErr = 0,remove_duplicates=0):
+def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, maxErr=0, remove_duplicates=0):
     """
     Find times of matching periods in two code sequences
     
@@ -136,9 +141,11 @@ def match_codes(auTimes, auCodes, mwTimes, mwCodes, minMatch = 5, maxErr = 0,rem
     """
     auTimes = np.array(auTimes)
     auCodes = np.array(auCodes)
+    auIdx = np.array(auIdx)
     mwTimes = np.array(mwTimes)
     mwCodes = np.array(mwCodes)
-    
+    mwIdx = np.array(mwIdx)
+
     # remove all duplicate audioCodes?
     if remove_duplicates:
         dels = np.where(np.diff(auCodes) == 0)[0] + 1
@@ -164,7 +171,7 @@ def match_codes(auTimes, auCodes, mwTimes, mwCodes, minMatch = 5, maxErr = 0,rem
         for aui in lookup[code][np.where(lookup[code] > auI)[0]]:
             if match_test(auCodes[aui:],mwCodes[mwI:], minMatch, maxErr) and\
                     (auCodes[aui] == mwCodes[mwI]):
-                matches.append((auTimes[aui], mwTimes[mwI]))
+                matches.append((auTimes[aui], mwTimes[mwI], auIdx[aui], mwIdx[mwI]))
                 offset = auTimes[aui] - mwTimes[mwI]
                 auI = aui
                 break

@@ -13,9 +13,9 @@ def test_cli_with_workflow_names():
 
     matches = np.load('./tests/tmp_matches.npy')
     assert len(matches) > 0
-    assert matches.shape == (145, 2)
-    np.testing.assert_allclose(matches[0, :], np.array([65.014, 7779.91675594]))
-    np.testing.assert_allclose(matches[-1, :], np.array([785.158, 8500.07755815]))
+    assert matches.shape == (145, 4)
+    np.testing.assert_allclose(matches[0, :2], np.array([65.014, 7779.91675594]))
+    np.testing.assert_allclose(matches[-1, :2], np.array([785.158, 8500.07755815]))
 
     os.remove('./tests/tmp_matches.npy')
 
@@ -27,9 +27,9 @@ def test_cli_with_paths_to_files():
 
     matches = np.load('./tests/tmp_matches.npy')
     assert len(matches) > 0
-    assert matches.shape == (145, 2)
-    np.testing.assert_allclose(matches[0, :], np.array([65.014, 7779.91675594]))
-    np.testing.assert_allclose(matches[-1, :], np.array([785.158, 8500.07755815]))
+    assert matches.shape == (145, 4)
+    np.testing.assert_allclose(matches[0, :2], np.array([65.014, 7779.91675594]))
+    np.testing.assert_allclose(matches[-1, :2], np.array([785.158, 8500.07755815]))
 
     os.remove('./tests/tmp_matches.npy')
 

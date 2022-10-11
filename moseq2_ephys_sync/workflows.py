@@ -276,8 +276,10 @@ pytesting=False):
     # Returns two columns of matched event times. All times must be in seconds by here
     matches = np.asarray(sync.match_codes(first_source_led_codes[:,0],  
                                   first_source_led_codes[:,1], 
+                                  first_source_led_codes[:,3],
                                   second_source_led_codes[:,0],
                                   second_source_led_codes[:,1],
+                                  second_source_led_codes[:,3],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
 
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
@@ -314,20 +316,20 @@ def oe_workflow(base_path, num_leds, leds_to_use, led_blink_interval, ephys_fs=3
         raise ValueError('Num leds must match length of leds to use!')
 
     # Load the TTL data
-    channels, ephys_TTL_timestamps = load_oe_data(base_path)
+    channels, ephys_TTL_sample_idx = load_oe_data(base_path)
 
     # Need to subtract the raw traces' starting timestamp from the TTL timestamps
     # (This is a bit of a glitch in open ephys / spike interface, might be able to remove this in future versions)
     continuous_timestamps_path = glob(join(base_path, '**', 'continuous', '**', 'timestamps.npy'), recursive = True)[0] ## load the continuous stream's timestamps
     continuous_timestamps = np.load(continuous_timestamps_path)
-    ephys_TTL_timestamps -= continuous_timestamps[0]   # subract the first timestamp from all TTLs; this way continuous ephys can safely start at 0 samples or seconds
-    ephys_TTL_timestamps = ephys_TTL_timestamps / ephys_fs
+    ephys_TTL_sample_idx -= continuous_timestamps[0]   # subract the first sample num (raw timestamp) from all TTLs; this way continuous ephys can safely start at 0 samples or seconds
+    ephys_TTL_timestamps = ephys_TTL_sample_idx / ephys_fs
     continuous_timestamps = continuous_timestamps / ephys_fs
 
     ttl_channels = [int(i)*sign for i in leds_to_use for sign in [-1,1]]
 
     ttl_bool = np.isin(channels, ttl_channels)
-    ephys_events = np.vstack([ephys_TTL_timestamps[ttl_bool], abs(channels[ttl_bool])-1, np.sign(channels[ttl_bool])]).T
+    ephys_events = np.vstack([ephys_TTL_timestamps[ttl_bool], abs(channels[ttl_bool])-1, np.sign(channels[ttl_bool]), ephys_TTL_sample_idx[ttl_bool]]).T
     codes, ephys_latencies = sync.events_to_codes(ephys_events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))
     codes = np.asarray(codes)
 
@@ -482,6 +484,7 @@ def list_to_events(time_list, led_states, tskip):
             events[:,0] = times
             events[:,1] = channels (0-indexed)
             events[:,2] = directions (1 or -1)
+            events[:,3] = 0-indexed index of events' rows (or frame nums or etc) in original data
     """
 
 
@@ -493,6 +496,7 @@ def list_to_events(time_list, led_states, tskip):
     times = pd.Series(dtype='int64', name='times')
     channels = pd.Series(dtype='int8', name='channels')
     directions = pd.Series(dtype='int8', name='directions')
+    events_idx_all = pd.Series(dtype='int64', name='index' )
     for i in range(len(led_states)):
         states = led_states[i]  # list of 0s and 1s for this given LED
         assert states.shape[0] == time_list.shape[0]
@@ -502,7 +506,8 @@ def list_to_events(time_list, led_states, tskip):
         times = times.append(pd.Series(time_list[events_idx], name='times'), ignore_index=True)
         channels = channels.append(pd.Series(np.repeat(i,len(events_idx)), name='channels'), ignore_index=True)
         directions = directions.append(pd.Series(np.sign(diffs[events_idx-1]), name='directions'), ignore_index=True)
-    events = pd.concat([times, channels, directions], axis=1)
+        events_idx_all = events_idx_all.append(pd.Series(events_idx, name='index'), ignore_index=True)
+    events = pd.concat([times, channels, directions, events_idx_all], axis=1)
     sorting = np.argsort(events.loc[:,'times'])
     events = events.loc[sorting, :]
     assert np.all(np.diff(events.times)>=0), 'Event times are not sorted!'
