@@ -82,15 +82,19 @@ def relabel_labeled_leds(labeled_led_img):
             labeled_led_img[labeled_led_img == val] = i
     return labeled_led_img
 
-
-def extract_initial_labeled_image(frames_uint8, movie_type):
+def extract_initial_labeled_image(frame_input, movie_type):
     """Use std (usually) of frames and otsu thresholding to extract LED positions
     movie_type:
     """
     
-    std_px = frames_uint8.std(axis=0)    
-    mean_px = frames_uint8.mean(axis=0)
-    vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
+    if frame_input.ndim == 3:
+        std_px = frame_input.std(axis=0)    
+        mean_px = frame_input.mean(axis=0)
+        vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
+    elif frame_input.ndim == 2:
+        vary_px = frame_input
+    else:
+        raise ValueError(f'Expected frame input of dim 2 or 3 but got ndim {frame_input.ndim}')
     
     # Get threshold for LEDs
     if movie_type == 'mkv':
