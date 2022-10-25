@@ -217,6 +217,38 @@ def get_roi_sorting(labeled_led_img, led_labels, sort_by=None):
     
     return sorting
 
+def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_img, led_labels, sorting, movie_type):
+    leds = []  # List to hold events by frame
+    xy_vals = [  # x/y indices for each LED
+                (
+                np.where(labeled_led_img==led_labels[sort_val])[0],
+                np.where(labeled_led_img==led_labels[sort_val])[1]
+                )
+                for sort_val in sorting
+                ]
+    frame_batch = np.array(frame_batch)
+    led_vals = np.zeros((len(frame_batch), len(sorting)))  # mean LED val on each frame
+    with vid_io.videoReader(ir_path, frame_batch, reporter_val) as vid:
+        for iFrame, frame in enumerate(vid):
+            for iLed, xy_tup in zip(range(len(sorting)), xy_vals):
+                led_vals[iFrame, iLed] = np.mean(frame[xy_tup[0], xy_tup[1]])
+
+    for iLed in range(len(sorting)):
+        led = led_vals[:, iLed]
+        led_on_thresh = threshold_otsu(led)
+        led_event_thresh = 0
+        detection_vals = (led > led_on_thresh).astype('int')  # 0 or 1 --> diff is -1 or 1
+        led_on = np.where(np.diff(detection_vals) > led_event_thresh)[0]   #rise indices
+        led_off = np.where(np.diff(detection_vals) < (-1*led_event_thresh))[0]   #fall indices
+        led_vec = np.zeros(led_vals.shape[0])
+        led_vec[led_on] = 1
+        led_vec[led_off] = -1
+        leds.append(led_vec)
+    
+    leds = np.vstack(leds) # (nLEDs x nFrames), spiky differenced signals to extract times   
+
+    return leds
+
 def extract_roi_events(labeled_led_img, led_labels, sorting, frame_data_chunk, movie_type):
     
     # List to hold events by frame
