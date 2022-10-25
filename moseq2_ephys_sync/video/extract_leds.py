@@ -472,6 +472,7 @@ def get_events(leds, timestamps):
     times = []
     directions = []
     channels = []
+    indices = []
 
     direction_signs = [1, -1]
     led_channels = range(leds.shape[0]) ## actual number of leds in case one is missing in this particular chunk. # range(num_leds)
@@ -480,17 +481,19 @@ def get_events(leds, timestamps):
 
         for direction_sign in direction_signs:
 
-            times_of_dir = timestamps[np.where(leds[channel,:] == direction_sign)[0]]  #np.where(leds[channel,:] == direction_sign)[0] + time_offset ## turned off or on
+            idx = np.where(leds[channel,:] == direction_sign)[0]
+            times_of_dir = timestamps[idx]  #np.where(leds[channel,:] == direction_sign)[0] + time_offset ## turned off or on
                         
             times.append(times_of_dir)
             channels.append(np.repeat(channel,times_of_dir.shape[0]))
             directions.append(np.repeat(direction_sign,times_of_dir.shape[0] ))
-
+            indices.append(idx)
 
     times = np.hstack(times)
     channels = np.hstack(channels).astype('int')
     directions = np.hstack(directions).astype('int')
+    indices = np.hstack(indices).astype('int')
     sorting = np.argsort(times)
-    events = np.vstack([times[sorting], channels[sorting], directions[sorting]]).T
+    events = np.vstack([times[sorting], channels[sorting], directions[sorting], indices[sorting]]).T
       
     return events
