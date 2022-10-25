@@ -14,6 +14,39 @@ from cv2 import resize
 
 import moseq2_ephys_sync.video.extract_leds
 
+## Variance alg utils
+def update_running_var(existingAggregate, newValue):
+    """Welford's algorithm for calculating variance in a single pass: https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+
+    Arguments:
+        existingAggregate {[type]} -- [description]
+        newValue {[type]} -- [description]
+
+    Returns:
+        [type] -- [description]
+    """
+    (count, mean, M2) = existingAggregate
+    count += 1
+    delta = newValue - mean
+    mean += delta / count
+    delta2 = newValue - mean
+    M2 += delta * delta2
+    return (count, mean, M2)
+
+def finalize_running_var(existingAggregate):
+    (count, mean, M2) = existingAggregate
+    if count < 2:
+        return float("nan")
+    else:
+        (mean, variance) = (mean, M2 / count)
+        return (mean, variance)
+
+def downsample_frames(frame_data_chunk, downsample=2):
+    new_shape = (int(frame_data_chunk.shape[1]/downsample), int(frame_data_chunk.shape[2]/downsample))
+    new_frames = np.zeros((frame_data_chunk.shape[0], *new_shape), dtype='uint8')
+    for iFrame,im in enumerate(np.arange(frame_data_chunk.shape[0])):
+        new_frames[iFrame,:,:] = resize(frame_data_chunk[iFrame,:,:], new_shape[::-1])  # cv2 expects WH, decord (and everyone else) uses HW, hence ::-1
+    return new_frames
 
 ## General utils
 def load_led_rois_from_file(base_path):
