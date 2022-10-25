@@ -1,8 +1,9 @@
 import matplotlib as mpl
-mpl.use('pdf')
 import matplotlib.pyplot as plt
-plt.rcParams['pdf.fonttype'] = 'truetype'
 import numpy as np
+mpl.use('pdf')
+plt.rcParams['pdf.fonttype'] = 'truetype'
+
 
 
 def plot_code_chunk(first_source_led_codes, first_source_name, second_source_led_codes, second_source_name, save_path):
@@ -60,10 +61,20 @@ def plot_matched_scatter(matches, first_source_name, second_source_name, save_pa
 def plot_model_errors(time_errors, save_path, outname, fname='model_errors'):
 
     f = plt.figure(dpi=600)
-    ax = plt.hist(time_errors)
+    plt.hist(time_errors)
 
     plt.title(f'{np.mean(np.abs(time_errors)):0.3f} sec. mean abs. error in second source Times')
     plt.xlabel('Predicted - actual matched video code times')
+    f.savefig(f'{save_path}/{fname}_{outname}.png')
+    plt.close(f)
+
+def plot_model_residuals(timestamps, time_errors, save_path, outname, fname='model_residuals'):
+    f = plt.figure(dpi=600)
+    plt.scatter(timestamps, time_errors, s=1)
+
+    plt.title(f'{np.mean(np.abs(time_errors)):0.3f} sec. mean abs. error')
+    plt.ylabel('Predicted - actual matched video code times')
+    plt.xlabel('S1 times')
     f.savefig(f'{save_path}/{fname}_{outname}.png')
     plt.close(f)
 
