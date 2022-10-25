@@ -134,6 +134,8 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
         List of matching times where:
             matches[:,0] = audioTimes
             matches[:,1] = mwTimes
+            matches[:,2] = audio indices
+            matches[:,3] = mw indices
     Notes
     -----
     Repeats in the code sequence will result in offset errors
