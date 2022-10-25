@@ -13,6 +13,8 @@ from skimage.draw import polygon
 from moseq2_ephys_sync.viz import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_video_frame
 import pdb
 
+from moseq2_ephys_sync.video import vid_io
+
 
 def get_led_data_from_rois(frame_data_chunk, led_roi_list, movie_type, diff_thresholds=None,  save_path=None):
     """
