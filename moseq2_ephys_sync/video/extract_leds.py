@@ -190,7 +190,7 @@ def clean_by_size(labeled_led_img, lower_size_thresh, upper_size_thresh):
 
     return labeled_led_img
 
-def get_roi_sorting(labeled_led_img, led_labels, sort_by):
+def get_roi_sorting(labeled_led_img, led_labels, sort_by=None):
     ## get LED x and y positions for sorting
     leds_xs = [np.where(labeled_led_img==i)[1].mean() for i in led_labels] 
     leds_ys = [np.where(labeled_led_img==i)[0].mean() for i in led_labels]  
@@ -199,7 +199,8 @@ def get_roi_sorting(labeled_led_img, led_labels, sort_by):
     # If not specified, sort by where there's most variance    
     if sort_by is None: 
         print('Sorting LEDs by variance...if no matches found, check LED sorting!')
-        if np.std(leds_xs) > np.std(leds_ys): # sort leds by the x coord:
+        if np.std(leds_xs) > np.std(leds_ys): 
+            # sort leds by the x coord:
             sorting = np.argsort(leds_xs)
         else:
             sorting = np.argsort(leds_ys)
