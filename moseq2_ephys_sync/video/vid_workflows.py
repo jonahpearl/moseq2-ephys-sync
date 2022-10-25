@@ -396,7 +396,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
     return mkv_led_codes, timestamps
 
 
-def basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc, basler_chunk_size=3000, led_rois_from_file=False, overwrite_extraction=False):
+def basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc, basler_chunk_size=500, led_rois_from_file=False, overwrite_extraction=False):
     """
     Workflow to extract led codes from a Basler mp4 file.
 
@@ -405,7 +405,11 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc,
     """
 
     # Set up 
-    basler_path = glob('%s/*.mp4' % base_path )[0]
+    basler_path = glob(join(base_path, 'basler_*.mp4'))
+    frame_info_path = glob(join(base_path, 'basler_*.csv'))
+
+    if len(basler_path) > 1:
+        raise ValueError(f'There is more than one mp4 video in {base_path}')
     vr = decord.VideoReader(basler_path, ctx=decord.cpu(0), num_threads=2)
     num_frames = len(vr)
     timestamps = vr.get_frame_timestamp(np.arange(0,num_frames))  # blazing fast. nframes x 2 (beginning,end), take just beginning times
@@ -427,6 +431,7 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc,
     # Do the loading
     if overwrite_extraction or (not os.path.isfile(basler_led_events_path)):
 
+        # old for-loop
         for i in tqdm(range(num_chunks)[0:]):
             
             print(frame_batches[i])
@@ -473,6 +478,9 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc,
             # else:
             #     print('Found %d LEDs found in chunk %d. Skipping... ' % (len(actual_led_nums),i))
 
+        # new parallel method
+        #TODO: implement parallel method, add global option to indicate whether to use it
+        
         basler_led_events = np.concatenate(basler_led_events)
         np.savez(basler_led_events_path, led_events=basler_led_events)
     else:
