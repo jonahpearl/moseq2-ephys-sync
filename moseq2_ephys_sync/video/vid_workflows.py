@@ -1,22 +1,200 @@
-from datetime import time
 import numpy as np
 import pandas as pd
-import sys,os
+from os.path import join, exists
+import os
 from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
 from glob import glob
-import joblib
-import argparse
-import pickle
 import decord
 import imageio
-from skimage import color
 from cv2 import resize
+from itertools import repeat
 
-from . import vid_util, extract_leds
+from moseq2_ephys_sync.video import vid_util, extract_leds, vid_io
+from moseq2_ephys_sync import viz, sync, util
 
-import moseq2_ephys_sync.viz as viz
-# import moseq2_ephys_sync.video.extract_leds as extract_leds
-import moseq2_ephys_sync.sync as sync
+import pdb
+
+def batch_var_summer(frame_batch, ir_path, reporter_val, output_name, overwrite=False, downsample=None):
+    
+    # Just load the file if already calculated
+    if exists(output_name) and not overwrite:
+        variance = np.load(output_name)
+        return variance
+    
+    # Otherwise run the parallel processing
+    agg = (0, 0, 0)
+    with vid_io.videoReader(ir_path, np.array(frame_batch), reporter_val) as vid:
+        for frame in vid:
+            agg = vid_util.update_running_var(agg, frame)
+    mean, variance = vid_util.finalize_running_var(agg)
+    np.save(output_name, variance)
+
+    return variance
+
+def net_frame_std_parallel(ir_path, save_path, frame_chunksize=1000, overwrite_extraction=False):
+    net_std_name = join(save_path, 'batch_variances', 'net_std.npy')
+    if exists(net_std_name) and not overwrite_extraction:
+        return np.load(net_std_name)
+
+    # Prep for parallel proc
+    nframes = vid_io.count_frames(ir_path)
+    batch_seq = vid_util.gen_batch_sequence(nframes, frame_chunksize, 0)
+    out_path = join(save_path, 'batch_variances')
+    if not exists(out_path):
+        os.makedirs(out_path)
+    out_names = [f'batch_var_img_{i}.npy' for i in range(len(batch_seq))]
+    parallel_output_names = [join(out_path, out_name) for out_name in out_names]
+    # reporter_vals = (i for i in range(len(batch_seq)))  # debugging
+    reporter_vals = (None for i in range(len(batch_seq)))
+
+    # Do the parallel proc
+    batch_variances = process_map(batch_var_summer, batch_seq, repeat(ir_path), reporter_vals, parallel_output_names, repeat(overwrite_extraction), chunksize=1)
+    net_std = np.sqrt(np.mean(batch_variances, axis=0))  # could replace this with proper variance combination but eh
+    viz.plot_video_frame(net_std, 600, join(save_path, 'batch_variances', 'net_std.png'))
+    np.save(net_std_name, net_std)
+
+    return net_std
+    
+def extract_led_events_parallel(ir_path, save_path, frame_chunksize, labeled_led_img, led_labels, led_sorting, overwrite_extraction=False):
+    # Prep for parallel proc
+    nframes = vid_io.count_frames(ir_path)
+    batch_seq = vid_util.gen_batch_sequence(nframes, frame_chunksize, 0)
+    reporter_vals = (None for i in range(len(batch_seq)))
+    out_path = join(save_path, 'avi_led_signals.npy')
+    if exists(out_path) and not overwrite_extraction:
+        led_signals = np.load(out_path)
+        return led_signals
+    
+    # Do the parallel proc
+    led_signals = process_map(extract_leds.batch_roi_event_extractor, batch_seq, repeat(ir_path), reporter_vals, repeat(labeled_led_img), repeat(led_labels), repeat(led_sorting), repeat('avi'), chunksize=1)
+    led_signals = np.concatenate(led_signals, axis=1)
+    np.save(out_path, led_signals)
+
+    return led_signals
+
+def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_interval=5, led_loc=None, avi_chunk_size=1000, source_timescale_factor_log10=None, overwrite_extraction=False):
+
+    if source_timescale_factor_log10 is None:
+        source_timescale_factor_log10 = 6  # azure's timestamps in microseconds!
+    
+    # Set up paths
+    if exists(source):
+        ir_path = source
+        source_name = os.path.split(source)[1]
+    else:
+        ir_path = util.find_file_through_glob_and_symlink(base_path, '*top.ir.avi')
+        source_name = source
+    timestamp_path = util.find_file_through_glob_and_symlink(base_path, '*top.device_timestamps.npy')
+    
+    # Load timestamps
+    timestamps = np.load(timestamp_path)
+    timestamps = timestamps / (10**source_timescale_factor_log10)  # convert to seconds
+
+    # Check if already processed
+    avi_led_events_path = join(save_path, f'{source_name}_led_events.npy')
+    if exists(avi_led_events_path) and not overwrite_extraction:
+        events = np.load(avi_led_events_path)
+    else:
+        # Get the std across all frames
+        net_std = net_frame_std_parallel(ir_path, save_path, frame_chunksize=avi_chunk_size, overwrite_extraction=overwrite_extraction)
+
+        # Extract LEDs from the net variance image
+        # NB: this strategy will fail if the LEDs move during the session! In that case, need to treat each batch separately.
+        num_features, filled_image, labeled_led_img = extract_leds.extract_initial_labeled_image(net_std, 'avi')
+
+        # If too many features, check for location parameter and filter by it
+        if (num_features > num_leds) and led_loc:
+            print('Too many features, using provided LED position...')
+            labeled_led_img = extract_leds.clean_by_location(filled_image, labeled_led_img, led_loc)
+
+        # Recompute num features (minus 1 for background)
+        num_features = len(np.unique(labeled_led_img)) - 1
+
+        # If still too many features, remove small ones
+        if (num_features > num_leds):
+            print('Oops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
+            labeled_led_img = extract_leds.clean_by_size(labeled_led_img, lower_size_thresh=20, upper_size_thresh=100)
+        
+        # Recompute num features (minus 1 for background)
+        num_features = len(np.unique(labeled_led_img)) - 1
+
+        # Show user a check
+        image_to_show = np.copy(labeled_led_img)
+        viz.plot_video_frame(image_to_show, 200, join(save_path, 'net_var_led_labels_preEvents.png'))
+
+        led_labels = [label for label in np.unique(labeled_led_img) if label > 0 ]
+        assert led_labels == sorted(led_labels)  # note that these labels aren't guaranteed only the correct ROIs yet... but the labels should be strictly sorted at this point.
+        print(f'Found {len(led_labels)} LED ROIs after size- and location-based cleaning...')        
+
+        # At this point, sometimes still weird spots, but they're roughly LED sized.
+        # So, to distinguish, get event data and then look for things that don't 
+        # look like syncing LEDs in that data.
+
+        # We use led_labels to extract events for each ROI.
+        # sorting will be a nLEDs-length list, zero-indexed sort based on ROI horizontal or vertical position.
+        # leds wil be an np.array of size (nLEDs, nFrames) with values 1 (on) and -1 (off) for events,
+            #  and row index is the sort value.
+        # So led_labels[sorting[0]] is the label of the ROI the script thinks belongs to LED #1,
+            # and leds[sorting[0]] is the sequence of ONs and OFFs for that LED.
+        sorting = extract_leds.get_roi_sorting(labeled_led_img, led_labels)
+
+        # This is where the magic happens! Extract LED on/off info for each frame.
+        leds = extract_led_events_parallel(ir_path, save_path, avi_chunk_size, labeled_led_img, led_labels, sorting, overwrite_extraction=overwrite_extraction)
+
+        # In the ideal case, there are 4 ROIs, extract events, double check LED 4 is switching each time, and we're done.
+        if leds.shape[0] == num_leds:
+            reverse = extract_leds.check_led_order(leds, num_leds)
+        else:
+            # Sometimes though you get little contaminating blips that look like LEDs.
+            # They usually have way too many or events or hardly any 
+            while leds.shape[0] > num_leds:
+
+                # Look for an ROI with way more or way fewer events than the expected number
+                mean_fps = 1/np.mean(np.diff(timestamps))
+                expected_num_events = leds.shape[1]/mean_fps/led_blink_interval
+                abs_log_ratios = np.abs(np.log(np.sum(leds != 0, axis=1) / expected_num_events))
+                roi_to_remove_idx = np.argmax(abs_log_ratios)
+
+                # Remove it
+                row_bool = ~np.isin(np.arange(leds.shape[0]), roi_to_remove_idx)
+                print(f'Removing roi #{roi_to_remove_idx} based on being farthest from expected event count...')
+                leds = leds[row_bool,:]  # drop row
+                labeled_led_img[labeled_led_img==led_labels[sorting[roi_to_remove_idx]]] = 0  # set ROI to bg
+                sorting = sorting[row_bool]  # remove from sort
+                
+            # Figure out which LED is #4
+            reverse = extract_leds.check_led_order(leds, num_leds)
+        
+        if reverse:
+            print('Reversed detected led order...')
+            leds = leds[::-1, :]
+            sorting = sorting[::-1]
+
+        # Re-plot labeled led img, with remaining four led labels mapped to their sort order.
+        # Use tmp because if you remap, say, 2 --> 3 before looking for 3, then when you look for 3, you'll also find 2.
+        image_to_show = np.copy(labeled_led_img)
+        tmp_idx_to_update = []
+        for i in range(len(sorting)):
+            tmp_idx_to_update.append(image_to_show == led_labels[sorting[i]])
+        for i in range(len(sorting)):
+            image_to_show[tmp_idx_to_update[i]] = (i+1)
+        viz.plot_video_frame(image_to_show, 200, join(save_path, f'{source_name}_sort_order_postEvents.png'))
+
+        # Extract events and append to event list
+        if leds.shape[1] != len(timestamps):
+            raise ValueError('Num frames and num timestamps do not match!')
+        events = extract_leds.get_events(leds, timestamps)
+        np.save(avi_led_events_path, events)
+        print('Successfullly extracted avi leds, converting to codes...')    
+
+    # Convert events to codes
+    events[:,0] = events[:, 0] 
+    avi_led_codes, latencies = sync.events_to_codes(events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))
+    avi_led_codes = np.asarray(avi_led_codes)
+    print('Converted.')
+
+    return avi_led_codes, timestamps
 
 
 def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_loc=None, avi_chunk_size=2000, overwrite_extraction=False):
