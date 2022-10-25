@@ -8,6 +8,7 @@ from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
 
 from moseq2_ephys_sync import sync, viz, util, workflows
+from moseq2_ephys_sync.video import vid_workflows
 
 import pdb
 
@@ -31,12 +32,12 @@ def process_source(source,
     #TODO: remove save path from these args, doesn't do anything I dont think!
 
     if source == 'oe':
-        source_led_codes, source_full_timestamps = workflows.oe_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, ephys_fs)
+        source_led_codes, source_full_timestamps = workflows.oe_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval)
 
     elif source == 'mkv':
         assert not (led_loc and led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
         assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
-        source_led_codes, source_full_timestamps = workflows.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, led_rois_from_file, overwrite_extraction)
+        source_led_codes, source_full_timestamps = vid_workflows.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc=led_loc, led_rois_from_file=led_rois_from_file, overwrite_mkv_extraction=overwrite_extraction)
 
     elif source == 'arduino' or source=='txt':
         source_led_codes, source_full_timestamps = workflows.arduino_workflow(base_path, num_leds, leds_to_use, led_blink_interval, arduino_spec=arduino_spec, source_timescale_factor_log10=source_timescale_factor_log10)
@@ -46,15 +47,18 @@ def process_source(source,
 
     elif source == 'basler':
         assert not (led_loc and led_rois_from_file), "User cannot specify both Basler led location (top right, etc) and list of exact Basler LED ROIs!"
-        source_led_codes, source_full_timestamps = vid_workflows.basler_workflow(base_path, num_leds, led_blink_interval, led_loc, basler_chunk_size, led_rois_from_file, overwrite_extraction)
+        source_led_codes, source_full_timestamps = vid_workflows.basler_workflow(base_path, num_leds, led_blink_interval, led_loc, led_rois_from_file=led_rois_from_file, overwrite_extraction=overwrite_extraction)
 
     elif source == 'basler_bonsai':
         source_led_codes, source_full_timestamps = workflows.basler_bonsai_workflow(base_path, num_leds, leds_to_use, led_blink_interval, source_timescale_factor_log10=source_timescale_factor_log10)
 
-    elif source == 'avi':
+    elif source == 'avi' or source.endswith('.avi'):
         assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)" 
-        source_led_codes, source_full_timestamps = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_extraction=overwrite_extraction)
-    
+        assert not (led_loc and led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
+        # source_led_codes, source_full_timestamps = vid_workflows.avi_workflow(base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
+        source_led_codes, source_full_timestamps = vid_workflows.avi_parallel_workflow(base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
+    else:
+        raise ValueError(f'Source {source} not recognized')
 
     return source_led_codes, source_full_timestamps
 
@@ -124,6 +128,9 @@ def sync_two_sources(matches,
         all_predicted_times = mdl.predict(t2[:,0].reshape(-1, 1))  # t1-timebase times of t2 codes (predict t1 from t2)
         viz.plot_matched_times(all_predicted_times, t2, t1, n1, n2, save_path, outname)
     
+        # Plot residuals
+        viz.plot_model_residuals(s1, time_errors, save_path, outname)
+
         # Save
         fname = join(save_path, f'{outname}.p')
         if exists(fname) and not overwrite_models:
