@@ -13,16 +13,18 @@ from moseq2_ephys_sync.video import vid_workflows
 import pdb
 
 def get_valid_source_abbrevs():
-    return ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_bonsai', 'avi']
+    return ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_bonsai', 'avi', 'top_ir_avi']
     
 def process_source(source,
                     base_path=None,
                     save_path=None,
                     num_leds=None,
-                    leds_to_use=None,
+                    leds_to_use=None,   #TODO: change leds_to_use cli arg to be a string like "1,2,4" or "4,3,2,1" that gets parsed.
                     led_blink_interval=None, 
                     source_timescale_factor_log10=None,
                     led_loc=None,
+                    exclude_center=None,
+                    manual_reverse=None,
                     led_rois_from_file=None,
                     overwrite_extraction=False,
                     arduino_spec=None
@@ -57,6 +59,8 @@ def process_source(source,
         assert not (led_loc and led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
         # source_led_codes, source_full_timestamps = vid_workflows.avi_workflow(base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
         source_led_codes, source_full_timestamps = vid_workflows.avi_parallel_workflow(base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
+    elif source == 'top_ir_avi':
+        source_led_codes, source_full_timestamps = vid_workflows.avi_parallel_workflow(base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, exclude_center=exclude_center, manual_reverse=manual_reverse, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
     else:
         raise ValueError(f'Source {source} not recognized')
 
@@ -159,7 +163,9 @@ first_source,
 second_source,
 output_dir_name='sync',
 led_loc=None, 
+exclude_center=False,
 led_blink_interval=5, 
+manual_reverse=False,
 s1_timescale_factor_log10=None,
 s2_timescale_factor_log10=None,
 arduino_spec=None, 
@@ -228,6 +234,8 @@ pytesting=False):
 
     if model_exists_bool and not overwrite_models:
         raise ValueError("One or both models already exist and overwrite_models is false!")
+        
+    print(f'Using LEDs {leds_to_use}, in that order!')
 
     print(f'Dealing with first souce: {first_source_name}...')
     # first_source_led_codes: array of reconstructed pixel clock codes where: codes[:,0] = time, codes[:,1] = code (and codes[:,2] = trigger channel but that's not used in this code)
@@ -240,6 +248,8 @@ pytesting=False):
                     led_blink_interval=led_blink_interval, 
                     source_timescale_factor_log10=s1_timescale_factor_log10,
                     led_loc=led_loc,
+                    exclude_center=exclude_center,
+                    manual_reverse=manual_reverse,
                     led_rois_from_file=s1_led_rois_from_file,
                     overwrite_extraction=overwrite_extraction,
                     arduino_spec=arduino_spec
@@ -254,6 +264,8 @@ pytesting=False):
                     led_blink_interval=led_blink_interval, 
                     source_timescale_factor_log10=s2_timescale_factor_log10,
                     led_loc=led_loc,
+                    exclude_center=exclude_center,
+                    manual_reverse=manual_reverse,
                     led_rois_from_file=s2_led_rois_from_file,
                     overwrite_extraction=overwrite_extraction,
                     arduino_spec=arduino_spec
@@ -462,6 +474,8 @@ def load_arduino_data(base_path, file_glob='*.txt'):
     else:
         arduino_data_path = util.find_file_through_glob_and_symlink(base_path, file_glob)
         
+    print(f'Using file at {arduino_data_path}')
+
     # Check if header is present
     with open(arduino_data_path, 'r') as f:
         first_row = f.readline().strip('\r\n').split(',')

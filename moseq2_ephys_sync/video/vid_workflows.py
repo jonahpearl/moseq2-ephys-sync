@@ -34,7 +34,9 @@ def batch_var_summer(frame_batch, ir_path, reporter_val, output_name, overwrite=
 
 def net_frame_std_parallel(ir_path, save_path, frame_chunksize=1000, overwrite_extraction=False):
     net_std_name = join(save_path, 'batch_variances', 'net_std.npy')
-    if exists(net_std_name) and not overwrite_extraction:
+    # if exists(net_std_name) and not overwrite_extraction:
+        # return np.load(net_std_name)
+    if exists(net_std_name):
         return np.load(net_std_name)
 
     # Prep for parallel proc
@@ -56,7 +58,7 @@ def net_frame_std_parallel(ir_path, save_path, frame_chunksize=1000, overwrite_e
 
     return net_std
     
-def extract_led_events_parallel(ir_path, save_path, frame_chunksize, labeled_led_img, led_labels, led_sorting, overwrite_extraction=False):
+def extract_led_events_parallel(ir_path, save_path, frame_chunksize, labeled_led_img, led_labels, led_sorting, led_blink_interval, overwrite_extraction=False):
     # Prep for parallel proc
     nframes = vid_io.count_frames(ir_path)
     batch_seq = vid_util.gen_batch_sequence(nframes, frame_chunksize, 0)
@@ -67,26 +69,29 @@ def extract_led_events_parallel(ir_path, save_path, frame_chunksize, labeled_led
         return led_signals
     
     # Do the parallel proc
-    led_signals = process_map(extract_leds.batch_roi_event_extractor, batch_seq, repeat(ir_path), reporter_vals, repeat(labeled_led_img), repeat(led_labels), repeat(led_sorting), repeat('avi'), chunksize=1)
+    led_signals = process_map(extract_leds.batch_roi_event_extractor, batch_seq, repeat(ir_path), reporter_vals, repeat(labeled_led_img), repeat(led_labels), repeat(led_sorting), repeat('avi'), repeat(led_blink_interval), chunksize=1)
     led_signals = np.concatenate(led_signals, axis=1)
     np.save(out_path, led_signals)
 
     return led_signals
 
-def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_interval=5, led_loc=None, avi_chunk_size=1000, source_timescale_factor_log10=None, overwrite_extraction=False):
+def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_interval=5, led_loc=None, exclude_center=False, manual_reverse=False, avi_chunk_size=1000, source_timescale_factor_log10=None, overwrite_extraction=False):
 
     if source_timescale_factor_log10 is None:
         source_timescale_factor_log10 = 6  # azure's timestamps in microseconds!
-    
+
     # Set up paths
     if exists(source):
         ir_path = source
         source_name = os.path.split(source)[1]
-    else:
+        # TODO: Need to figure out how to get timestamps here if it's not CW's code.
+    elif source == 'top_ir_avi':
         ir_path = util.find_file_through_glob_and_symlink(base_path, '*top.ir.avi')
         source_name = source
     timestamp_path = util.find_file_through_glob_and_symlink(base_path, '*top.device_timestamps.npy')
     
+    print(f'Using file at {ir_path}...')
+
     # Load timestamps
     timestamps = np.load(timestamp_path)
     timestamps = timestamps / (10**source_timescale_factor_log10)  # convert to seconds
@@ -104,9 +109,9 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
         num_features, filled_image, labeled_led_img = extract_leds.extract_initial_labeled_image(net_std, 'avi')
 
         # If too many features, check for location parameter and filter by it
-        if (num_features > num_leds) and led_loc:
+        if (num_features > num_leds) and (led_loc or exclude_center):
             print('Too many features, using provided LED position...')
-            labeled_led_img = extract_leds.clean_by_location(filled_image, labeled_led_img, led_loc)
+            labeled_led_img = extract_leds.clean_by_location(filled_image, labeled_led_img, led_loc, exclude_center)
 
         # Recompute num features (minus 1 for background)
         num_features = len(np.unique(labeled_led_img)) - 1
@@ -140,7 +145,11 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
         sorting = extract_leds.get_roi_sorting(labeled_led_img, led_labels)
 
         # This is where the magic happens! Extract LED on/off info for each frame.
-        leds = extract_led_events_parallel(ir_path, save_path, avi_chunk_size, labeled_led_img, led_labels, sorting, overwrite_extraction=overwrite_extraction)
+        leds = extract_led_events_parallel(ir_path, save_path, avi_chunk_size, labeled_led_img, led_labels, sorting, led_blink_interval, overwrite_extraction=overwrite_extraction)
+
+
+        # useful debugging example:
+        # extract_leds.batch_roi_event_extractor(range(21000, 22000), ir_path, None, labeled_led_img, led_labels, sorting, 'avi', led_blink_interval)
 
         # In the ideal case, there are 4 ROIs, extract events, double check LED 4 is switching each time, and we're done.
         if leds.shape[0] == num_leds:
@@ -165,8 +174,8 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
                 
             # Figure out which LED is #4
             reverse = extract_leds.check_led_order(leds, num_leds)
-        
-        if reverse:
+
+        if reverse or manual_reverse:
             print('Reversed detected led order...')
             leds = leds[::-1, :]
             sorting = sorting[::-1]
@@ -189,7 +198,6 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
         print('Successfullly extracted avi leds, converting to codes...')    
 
     # Convert events to codes
-    events[:,0] = events[:, 0] 
     avi_led_codes, latencies = sync.events_to_codes(events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))
     avi_led_codes = np.asarray(avi_led_codes)
     print('Converted.')

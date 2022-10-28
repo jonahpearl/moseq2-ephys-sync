@@ -129,7 +129,7 @@ def extract_initial_labeled_image(frame_input, movie_type):
     return num_features, filled_image, labeled_led_img
 
 
-def clean_by_location(filled_image, labeled_led_img, led_loc):
+def clean_by_location(filled_image, labeled_led_img, led_loc, exclude_center):
     """Take labeled led image, and a location, and remove labeled regions not in that loc
     led_loc (str): Location of LEDs in an plt.imshow(labeled_leds)-oriented plot. Options are topright, topleft, bottomleft, or bottomright.
     """
@@ -157,6 +157,9 @@ def clean_by_location(filled_image, labeled_led_img, led_loc):
     else:
         RuntimeError('led_loc not recognized')
     
+    if exclude_center:
+        idx = np.asarray([ (((y > 0.6) or (y < 0.4)) or ((x > 0.6) or (x < 0.4))) for (x,y) in centers_of_mass]).nonzero()[0]
+
     # Add back one to account for background. Ie, if 3rd center of mass was in correct loc, this corresponds to label 4 in labeled_leds
     idx = idx+1
     
@@ -219,7 +222,7 @@ def get_roi_sorting(labeled_led_img, led_labels, sort_by=None):
     
     return sorting
 
-def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_img, led_labels, sorting, movie_type):
+def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_img, led_labels, sorting, movie_type, led_blink_interval):
     leds = []  # List to hold events by frame
     xy_vals = [  # x/y indices for each LED
                 (
@@ -237,7 +240,7 @@ def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_im
 
     for iLed in range(len(sorting)):
         led = led_vals[:, iLed]
-        led_on_thresh = threshold_otsu(led)
+        led_on_thresh = threshold_otsu(led)  
         led_event_thresh = 0
         detection_vals = (led > led_on_thresh).astype('int')  # 0 or 1 --> diff is -1 or 1
         led_on = np.where(np.diff(detection_vals) > led_event_thresh)[0]   #rise indices
@@ -248,6 +251,13 @@ def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_im
         leds.append(led_vec)
     
     leds = np.vstack(leds) # (nLEDs x nFrames), spiky differenced signals to extract times   
+
+    # check for weirdness (ie an led was on or off the entire time and it detected wayy too many events)
+    ev_counts = np.sum(leds!=0, axis=1)
+    ev_count_max = leds.shape[1] / vid_io.get_vid_fps(ir_path) / led_blink_interval
+    for row in range(leds.shape[0]):    
+        if ev_counts[row] > (ev_count_max*2):  # give some buffer
+            leds[row,:] = 0
 
     return leds
 
@@ -348,7 +358,7 @@ def split_largest_region(labeled_img, thickness = 10):
     return p,labeled_img
 
 
-def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num=0, led_loc=None,
+def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num=0, led_loc=None, exclude_center=False,
     flip_horizontal=False, flip_vertical=False, sort_by=None, save_path=None):
     """
     Uses std across frames + otsu + cleaning + knowledge about the event sequence to find LED ROIs in a chunk of frames.
@@ -379,7 +389,7 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     # If still too many features, check for location parameter and filter by it
     if (num_features > num_leds) and led_loc:
         print('Too many features, using provided LED position...')
-        labeled_led_img = clean_by_location(filled_image, labeled_led_img, led_loc)
+        labeled_led_img = clean_by_location(filled_image, labeled_led_img, led_loc, exclude_center)
 
     # Recompute num features (minus 1 for background)
     num_features = len(np.unique(labeled_led_img)) - 1
