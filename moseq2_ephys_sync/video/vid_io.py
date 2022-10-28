@@ -12,6 +12,9 @@ def count_frames(file_name):
     with av.open(file_name, 'r') as reader:
         return reader.streams.video[0].frames          
 
+def get_vid_fps(file_name):
+    with av.open(file_name, 'r') as reader:
+        return int(reader.streams.video[0].average_rate)
 
 class videoWriter():
     def __init__(self, file_name, **ffmpeg_options):
