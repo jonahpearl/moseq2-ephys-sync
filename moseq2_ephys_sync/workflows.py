@@ -34,7 +34,7 @@ def process_source(source,
     #TODO: remove save path from these args, doesn't do anything I dont think!
 
     if source == 'oe':
-        source_led_codes, source_full_timestamps = workflows.oe_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval)
+        source_led_codes, source_full_timestamps = workflows.oe_workflow(base_path, num_leds, leds_to_use, led_blink_interval)
 
     elif source == 'mkv':
         assert not (led_loc and led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
@@ -240,6 +240,7 @@ pytesting=False):
     print(f'Dealing with first souce: {first_source_name}...')
     # first_source_led_codes: array of reconstructed pixel clock codes where: codes[:,0] = time, codes[:,1] = code (and codes[:,2] = trigger channel but that's not used in this code)
     # first_source_full_timestamps: full list of timestamps from source 1 (every timestamp, not just event times! For prediction with the model at the end.)
+
     first_source_led_codes, first_source_full_timestamps = \
     process_source(first_source,
                     base_path=base_path,
@@ -330,6 +331,9 @@ def oe_workflow(base_path, num_leds, leds_to_use, led_blink_interval, ephys_fs=3
     """
     
     """
+
+    
+
     # assert num_leds==4, "TTL code expects 4 LED channels, other nums of channels not yet supported"
     if num_leds != len(leds_to_use):
         raise ValueError('Num leds must match length of leds to use!')
