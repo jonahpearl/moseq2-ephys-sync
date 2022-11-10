@@ -10,7 +10,7 @@ VALID_SOURCE_ABBREVS = ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_
 
 # NB: changes to this function must be re-installed via pip!
 @click.command()
-@click.option('--input-path', '-i', type=str)
+@click.argument('input-path', type=str)
 @click.option('-s1', '--first-source', type=str)
 @click.option('-s2', '--second-source', type=str)
 @click.option('-o', '--output-dir-name', type=str, default='sync', help='Relative path to output, from input')
