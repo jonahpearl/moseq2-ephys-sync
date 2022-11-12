@@ -39,7 +39,8 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
 
     evts = np.array(copy.deepcopy(events))
     evts = evts[evts[:,0].argsort(),:] # sort events
-    # get initial state by looking at first transitions
+    
+    # Get initial state by looking at first transitions
     state = []
     for i in range(nchannels): ## was range
         d = evts[np.where(evts[:,1] == i)[0][0],2]
@@ -57,36 +58,29 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
     latencies = [ [ [] for x in range(nchannels)] for y in range(nchannels)]
     for ev in evts:
         if abs(ev[0] - trigTime) > minCodeTime:
-            # new event
-            code = state_to_code(state)
             
-
-            # codes.append((trigTime, code, trigChannel))
+            # New event
+            code = state_to_code(state)
             codes.append((trigTime, code, trigChannel, trigIdx))
             trigTime = ev[0]
             trigChannel = int(abs(ev[1]))
             trigDirection = int(ev[2])
             trigIdx = int(ev[3])
 
-        # update state
+        # Update state
         ch = int(abs(ev[1])) ## the channel on which this event happened. [0 or 1]
         state[ch] += int(ev[2]) ## += [-1 or +1]... 
-
-        #print(state[ch],ch,int(ev[2]) )
         
+        # Only store on valid states and + transitions
         if not (state[ch] in [0,1]):
-            #logging.debug("Invalid state found[%s] at %i, truncating" % (str(state), ev[0]))
             state[ch] = max(0,min(1,state[ch]))
         else:
-            # only store on valid states and + transitions
-            # TODO look at transition direction of trigger, did it go up or down? only look for THOSE events
             if (trigDirection == 1) and (int(ev[2]) == 1): latencies[trigChannel][ch].append(ev[0] - trigTime)
     
-    # assume last code was complete
+    # Assume last code was complete
     code = state_to_code(state)
 
     if code != codes[-1][1]:
-        # codes.append((trigTime, code, trigChannel))
         codes.append((trigTime, code, trigChannel, trigIdx))
 
     return codes, latencies
