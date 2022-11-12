@@ -6,7 +6,8 @@ import numpy as np
 import copy
 import pdb
 
-def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03_codes=0
+
+def events_to_codes(events, nchannels, minCodeTime):  # swap_12_codes = 1,swap_03_codes=0
     """
     Parameters
     ----------
@@ -20,7 +21,7 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
         Number of pixel clock channels
     minCodeTime : int
         Minimum time (in samples) for a given code change
-    
+
     Return
     ------
     codes : 2d array
@@ -38,27 +39,27 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
     assert len(events[0]) == 4, "Each event should be of length 4 not %i" % len(events[0])
 
     evts = np.array(copy.deepcopy(events))
-    evts = evts[evts[:,0].argsort(),:] # sort events
-    
+    evts = evts[evts[:, 0].argsort(), :]  # sort events
+
     # Get initial state by looking at first transitions
     state = []
-    for i in range(nchannels): ## was range
-        d = evts[np.where(evts[:,1] == i)[0][0],2]
+    for i in range(nchannels):  # was range
+        d = evts[np.where(evts[:, 1] == i)[0][0], 2]
         if d == 1:
             state.append(0)
         else:
             state.append(1)
 
-    trigTime = evts[0,0]
-    trigChannel = int(evts[0,1])
-    trigDirection = int(evts[0,2])
-    trigIdx = int(evts[0,3])
+    trigTime = evts[0, 0]
+    trigChannel = int(evts[0, 1])
+    trigDirection = int(evts[0, 2])
+    trigIdx = int(evts[0, 3])
     codes = []
-    
-    latencies = [ [ [] for x in range(nchannels)] for y in range(nchannels)]
+
+    latencies = [[[] for x in range(nchannels)] for y in range(nchannels)]
     for ev in evts:
         if abs(ev[0] - trigTime) > minCodeTime:
-            
+
             # New event
             code = state_to_code(state)
             codes.append((trigTime, code, trigChannel, trigIdx))
@@ -68,15 +69,16 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
             trigIdx = int(ev[3])
 
         # Update state
-        ch = int(abs(ev[1])) ## the channel on which this event happened. [0 or 1]
-        state[ch] += int(ev[2]) ## += [-1 or +1]... 
-        
+        ch = int(abs(ev[1]))  # the channel on which this event happened. [0 or 1]
+        state[ch] += int(ev[2])  # += [-1 or +1]...
+
         # Only store on valid states and + transitions
-        if not (state[ch] in [0,1]):
-            state[ch] = max(0,min(1,state[ch]))
+        if not (state[ch] in [0, 1]):
+            state[ch] = max(0, min(1, state[ch]))
         else:
-            if (trigDirection == 1) and (int(ev[2]) == 1): latencies[trigChannel][ch].append(ev[0] - trigTime)
-    
+            if (trigDirection == 1) and (int(ev[2]) == 1):
+                latencies[trigChannel][ch].append(ev[0] - trigTime)
+
     # Assume last code was complete
     code = state_to_code(state)
 
@@ -85,28 +87,29 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
 
     return codes, latencies
 
+
 def state_to_code(state):
     """
     Convert a pixel clock state list to a code
-    
+
     Parameters
     ----------
     state : list
         List of 0s and 1s indicating the state of the pixel clock channels.
         state[0] = LSB, state[1] = MSB
-    
+
     Returns
     -------
     code : int
         Reconstructed pixel clock code
     """
-    return sum([state[i] << i for i in range(len(state))]) # << = bit shift operator
+    return sum([state[i] << i for i in range(len(state))])  # << = bit shift operator
 
 
 def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, maxErr=0, remove_duplicates=0):
     """
     Find times of matching periods in two code sequences
-    
+
     Parameters
     -s---------
     audioTimes : list
@@ -121,7 +124,7 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
         Minimum match length (starting at the first index)
     maxErr : int
         Maximum number of matching errors
-    
+
     Returns
     -------
     matches : 2d list
@@ -145,19 +148,19 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
     # remove all duplicate audioCodes?
     if remove_duplicates:
         dels = np.where(np.diff(auCodes) == 0)[0] + 1
-        auCodes = np.delete(auCodes,dels)
-        auTimes = np.delete(auTimes,dels)
-    
+        auCodes = np.delete(auCodes, dels)
+        auTimes = np.delete(auTimes, dels)
+
         dels = np.where(np.diff(mwCodes) == 0)[0] + 1
-        mwCodes = np.delete(mwCodes,dels)
-        mwTimes = np.delete(mwTimes,dels)
-    
+        mwCodes = np.delete(mwCodes, dels)
+        mwTimes = np.delete(mwTimes, dels)
+
     # create lookup lists for each audioCode
     codes = np.unique(mwCodes)
     lookup = {}
     for c in codes:
         lookup[c] = np.where(auCodes == c)[0]
-    
+
     # step through mwCodes, looking for audioTimes
     auI = -1
     matches = []
@@ -165,7 +168,7 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
         matchFound = False
         code = mwCodes[mwI]
         for aui in lookup[code][np.where(lookup[code] > auI)[0]]:
-            if match_test(auCodes[aui:],mwCodes[mwI:], minMatch, maxErr) and\
+            if match_test(auCodes[aui:], mwCodes[mwI:], minMatch, maxErr) and\
                     (auCodes[aui] == mwCodes[mwI]):
                 matches.append((auTimes[aui], mwTimes[mwI], auIdx[aui], mwIdx[mwI]))
                 offset = auTimes[aui] - mwTimes[mwI]
@@ -174,10 +177,11 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
         # warn that code wasn't found?
     return matches
 
+
 def match_test(au, mw, minMatch, maxErr):
     """
     Test if two codes sequeces match based on a minimum match length and maximum error
-    
+
     Parameters
     ----------
     au : list
@@ -188,7 +192,7 @@ def match_test(au, mw, minMatch, maxErr):
         Minimum match length (starting at the first index)
     maxErr : int
         Maximum number of matching errors
-    
+
     Returns
     -------
     match : bool

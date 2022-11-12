@@ -29,24 +29,23 @@ VALID_SOURCE_ABBREVS = ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_
 @click.option('--predict-full-timestamps-of-source', '-r', multiple=True, default=None, help='Choose which sources (1, 2, or both) to predict full list of times for (syntax: -r 1 -r 2 --next_arg')
 @click.option('--pytesting', is_flag=True, help='If true, return matches and dont actually make the syncing models')
 def main(input_path=None,
-    first_source=None,
-    second_source=None,
-    output_dir_name='sync',
-    led_loc=None, 
-    exclude_center=False,
-    manual_reverse=False,
-    led_blink_interval=5, 
-    s1_timescale_factor_log10=None,
-    s2_timescale_factor_log10=None,
-    arduino_spec=None, 
-    s1_led_rois_from_file=False,
-    s2_led_rois_from_file=False, 
-    overwrite_models=False,
-    overwrite_extraction=False,
-    leds_to_use='1234',
-    predict_full_timestamps_of_source=None,
-    pytesting=False):
-
+         first_source=None,
+         second_source=None,
+         output_dir_name='sync',
+         led_loc=None,
+         exclude_center=False,
+         manual_reverse=False,
+         led_blink_interval=5,
+         s1_timescale_factor_log10=None,
+         s2_timescale_factor_log10=None,
+         arduino_spec=None,
+         s1_led_rois_from_file=False,
+         s2_led_rois_from_file=False,
+         overwrite_models=False,
+         overwrite_extraction=False,
+         leds_to_use='1234',
+         predict_full_timestamps_of_source=None,
+         pytesting=False):
 
     # Parse leds to use
     if ',' in leds_to_use:
@@ -59,25 +58,24 @@ def main(input_path=None,
         if input_path is None:
             raise ValueError('Must specify an input path!')
         workflows.main_function(input_path,
-            first_source,
-            second_source,
-            output_dir_name=output_dir_name,
-            led_loc=led_loc, 
-            exclude_center=exclude_center,
-            manual_reverse=manual_reverse,
-            led_blink_interval=led_blink_interval, 
-            s1_timescale_factor_log10=s1_timescale_factor_log10,
-            s2_timescale_factor_log10=s2_timescale_factor_log10,
-            arduino_spec=arduino_spec, 
-            s1_led_rois_from_file=s1_led_rois_from_file,
-            s2_led_rois_from_file=s2_led_rois_from_file, 
-            overwrite_models=overwrite_models,
-            overwrite_extraction=overwrite_extraction,
-            leds_to_use=leds_to_use,
-            sources_to_predict=predict_full_timestamps_of_source,
-            pytesting=pytesting)
+                                first_source,
+                                second_source,
+                                output_dir_name=output_dir_name,
+                                led_loc=led_loc,
+                                exclude_center=exclude_center,
+                                manual_reverse=manual_reverse,
+                                led_blink_interval=led_blink_interval,
+                                s1_timescale_factor_log10=s1_timescale_factor_log10,
+                                s2_timescale_factor_log10=s2_timescale_factor_log10,
+                                arduino_spec=arduino_spec,
+                                s1_led_rois_from_file=s1_led_rois_from_file,
+                                s2_led_rois_from_file=s2_led_rois_from_file,
+                                overwrite_models=overwrite_models,
+                                overwrite_extraction=overwrite_extraction,
+                                leds_to_use=leds_to_use,
+                                sources_to_predict=predict_full_timestamps_of_source,
+                                pytesting=pytesting)
 
 
-
-if __name__ == "__main__" :
+if __name__ == "__main__":
     main()
