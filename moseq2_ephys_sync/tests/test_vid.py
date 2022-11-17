@@ -8,7 +8,12 @@ def test_cli_top_ir_avi_without_led4():
     out_dir = './tmp'
     arduino_name = 'txt'
     vid_name = 'top_ir_avi'
-    os.system(f'moseq2_ephys_sync -i {PATH_TO_TEST_DATA}' + \
+    os.system(f'moseq2_ephys_sync {PATH_TO_TEST_DATA}' + \
              f' -s1 {arduino_name} -s2 {vid_name}  --s2-timescale-factor-log10 6' + \
              f' -o {out_dir} --manual-reverse --leds-to-use 123' + \
              ' --exclude-center --led-loc rightquarter')
+
+    assert exists(join(PATH_TO_TEST_DATA, out_dir, 'txt_from_top_ir_avi.p'))
+    assert exists(join(PATH_TO_TEST_DATA, out_dir, 'top_ir_avi_from_txt.p'))
+
+    # os.system(f'rm -rf {join(PATH_TO_TEST_DATA, out_dir)}')
