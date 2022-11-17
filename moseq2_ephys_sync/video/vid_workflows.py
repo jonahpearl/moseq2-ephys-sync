@@ -91,6 +91,7 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
     timestamp_path = util.find_file_through_glob_and_symlink(base_path, '*top.device_timestamps.npy')
     
     print(f'Using file at {ir_path}...')
+    print(f'Save path is {save_path}')
 
     # Load timestamps
     timestamps = np.load(timestamp_path)
@@ -102,6 +103,7 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
         events = np.load(avi_led_events_path)
     else:
         # Get the std across all frames
+        print('Getting frame std')
         net_std = net_frame_std_parallel(ir_path, save_path, frame_chunksize=avi_chunk_size, overwrite_extraction=overwrite_extraction)
 
         # Extract LEDs from the net variance image
