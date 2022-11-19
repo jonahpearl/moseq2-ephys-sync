@@ -473,7 +473,10 @@ def basler_bonsai_workflow(base_path,
     return bonsai_codes, bonsai_timestamps
 
 
-def load_arduino_data(base_path, file_glob='*.txt'):
+def load_arduino_data(base_path, file_glob='*.txt', patterns_to_exclude=None):
+
+    if patterns_to_exclude is None:
+        patterns_to_exclude = ['metadata', 'depth_ts']
 
     # Define header data types
     # Do not use unsigned integers!! Otherwise np.diff() will not be able to return negatives.
@@ -491,7 +494,7 @@ def load_arduino_data(base_path, file_glob='*.txt'):
     if base_path.endswith('.csv') or base_path.endswith('.txt'):
         arduino_data_path = base_path
     else:
-        arduino_data_path = util.find_file_through_glob_and_symlink(base_path, file_glob)
+        arduino_data_path = util.find_file_through_glob_and_symlink(base_path, file_glob, patterns_to_exclude)
 
     print(f'Using file at {arduino_data_path}')
 
