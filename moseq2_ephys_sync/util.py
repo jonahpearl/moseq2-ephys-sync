@@ -36,6 +36,8 @@ def find_file_through_glob_and_symlink(path, pattern, exclude_patterns=None):
     files = glob(os.path.join(path, pattern))
 
     # Remove known confounders (eg we use '*.txt' for arduino files, but sometimes we also have 'depth_ts.txt')
+    if exclude_patterns is None:
+        exclude_patterns = []
     files = [f for f in files if not any([pattern in f for pattern in exclude_patterns])]
 
     # If no files found, maybe we have to follow a sym-linked depth-video back to the raw data directory
