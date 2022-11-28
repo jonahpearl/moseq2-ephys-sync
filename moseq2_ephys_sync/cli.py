@@ -52,6 +52,9 @@ def main(input_path=None,
         leds_to_use = leds_to_use.replace(',', '')
     leds_to_use = [str(i) for i in leds_to_use]
 
+    if len(leds_to_use) > 4:
+        raise ValueError(f'Expected no more than 4 LEDs but got {len(leds_to_use)} ({leds_to_use})...check that leds_to_use input value is being parsed correctly.')
+
     if (first_source is not None and second_source is None) or (first_source is None and second_source is not None):
         raise ValueError('Cannot specify one source but not the other!')
     else:
