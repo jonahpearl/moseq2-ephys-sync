@@ -330,7 +330,7 @@ def main_function(base_path,
         return
 
     elif pytesting:
-        fname = './tests/tmp_matches.npy'
+        fname = join(save_path, 'tmp_matches.npy')
         np.save(fname, matches)
         return
 

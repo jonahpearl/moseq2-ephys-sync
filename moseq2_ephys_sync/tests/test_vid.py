@@ -16,4 +16,4 @@ def test_cli_top_ir_avi_without_led4():
     assert exists(join(PATH_TO_TEST_DATA, out_dir, 'txt_from_top_ir_avi.p'))
     assert exists(join(PATH_TO_TEST_DATA, out_dir, 'top_ir_avi_from_txt.p'))
 
-    # os.system(f'rm -rf {join(PATH_TO_TEST_DATA, out_dir)}')
+    os.system(f'rm -rf {join(PATH_TO_TEST_DATA, out_dir)}')
