@@ -65,15 +65,15 @@ def process_source(source,
             base_path, num_leds, leds_to_use, led_blink_interval, source_timescale_factor_log10=source_timescale_factor_log10)
 
     elif source == 'avi' or source.endswith('.avi'):
-        assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)"
+        # assert '4' in leds_to_use, "LED extraction code expects that last LED is LED 4 (switching every interval)"
         assert not (
             led_loc and led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
         # source_led_codes, source_full_timestamps = vid_workflows.avi_workflow(base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
         source_led_codes, source_full_timestamps = vid_workflows.avi_parallel_workflow(
-            base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
+            base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, leds_to_use=leds_to_use, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
     elif source == 'top_ir_avi':
         source_led_codes, source_full_timestamps = vid_workflows.avi_parallel_workflow(
-            base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, exclude_center=exclude_center, manual_reverse=manual_reverse, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
+            base_path, save_path, source, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, leds_to_use=leds_to_use, exclude_center=exclude_center, manual_reverse=manual_reverse, avi_chunk_size=1000, overwrite_extraction=overwrite_extraction)
     else:
         raise ValueError(f'Source {source} not recognized')
 

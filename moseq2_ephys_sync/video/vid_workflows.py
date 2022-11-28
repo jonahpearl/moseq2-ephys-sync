@@ -75,7 +75,7 @@ def extract_led_events_parallel(ir_path, save_path, frame_chunksize, labeled_led
 
     return led_signals
 
-def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_interval=5, led_loc=None, exclude_center=False, manual_reverse=False, avi_chunk_size=1000, source_timescale_factor_log10=None, overwrite_extraction=False):
+def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_interval=5, leds_to_use=None, led_loc=None, exclude_center=False, manual_reverse=False, avi_chunk_size=1000, source_timescale_factor_log10=None, overwrite_extraction=False):
 
     if source_timescale_factor_log10 is None:
         source_timescale_factor_log10 = 6  # azure's timestamps in microseconds!
@@ -155,7 +155,7 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
 
         # In the ideal case, there are 4 ROIs, extract events, double check LED 4 is switching each time, and we're done.
         if leds.shape[0] == num_leds:
-            reverse = extract_leds.check_led_order(leds, num_leds)
+            pass
         else:
             # Sometimes though you get little contaminating blips that look like LEDs.
             # They usually have way too many or events or hardly any 
@@ -174,7 +174,8 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
                 labeled_led_img[labeled_led_img==led_labels[sorting[roi_to_remove_idx]]] = 0  # set ROI to bg
                 sorting = sorting[row_bool]  # remove from sort
                 
-            # Figure out which LED is #4
+        # Figure out which LED is #4, if present at all
+        if '4' in leds_to_use:
             reverse = extract_leds.check_led_order(leds, num_leds)
 
         if reverse or manual_reverse:
