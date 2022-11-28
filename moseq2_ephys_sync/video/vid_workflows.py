@@ -175,6 +175,7 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
                 sorting = sorting[row_bool]  # remove from sort
                 
         # Figure out which LED is #4, if present at all
+        reverse = False
         if '4' in leds_to_use:
             reverse = extract_leds.check_led_order(leds, num_leds)
 
