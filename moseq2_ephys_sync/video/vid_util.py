@@ -58,7 +58,7 @@ def load_led_rois_from_file(base_path):
     return diff_thresholds, led_roi_list
 
 
-def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
+def make_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
     Generates batches used to chunk videos prior to extraction.
 
