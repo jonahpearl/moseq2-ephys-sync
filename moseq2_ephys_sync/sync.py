@@ -58,9 +58,16 @@ def events_to_codes(events, nchannels, minCodeTime):  # swap_12_codes = 1,swap_0
 
     latencies = [[[] for x in range(nchannels)] for y in range(nchannels)]
     for ev in evts:
+
+        # Find next event that is at least minCodeTime after previous code.
         if abs(ev[0] - trigTime) > minCodeTime:
 
-            # New event
+            # Append the previous code and trigTime
+            # Doing it this way allows us to catch events that are not perfectly simultaneous.
+            # Eg, events at t=... 5.2, 10, 10.1, 10.2, 15.0, ... the state will be changed by
+            # all the events from 10-10.2, and when it gets to 15.0, 
+            # only one code is created with trigTime = 10.0. Then the states are updated at
+            # 15.0 - 15.2, and appended when it hits 20.0 ... etc.
             code = state_to_code(state)
             codes.append((trigTime, code, trigChannel, trigIdx))
             trigTime = ev[0]
