@@ -133,41 +133,51 @@ def clean_by_location(filled_image, labeled_led_img, led_loc, exclude_center):
     """Take labeled led image, and a location, and remove labeled regions not in that loc
     led_loc (str): Location of LEDs in an plt.imshow(labeled_leds)-oriented plot. Options are topright, topleft, bottomleft, or bottomright.
     """
-    centers_of_mass = ndi.measurements.center_of_mass(filled_image, labeled_led_img, range(1, np.unique(labeled_led_img)[-1] + 1))  # exclude 0, which is background
-    centers_of_mass = [(x/filled_image.shape[0], y/filled_image.shape[1]) for (x,y) in centers_of_mass]  # normalize
-    # Imshow orientation: x is the vertical axis of the image and runs top to bottom; y is horizontal and runs left to right. (0,0 is top-left)
-    if led_loc == 'topright':
-        idx = np.asarray([((x < 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
-    elif led_loc == 'topleft':
-        idx = np.asarray([((x < 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
-    elif led_loc == 'bottomleft':
-        idx = np.asarray([((x > 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
-    elif led_loc == 'bottomright':
-        idx = np.asarray([((x > 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
-    elif led_loc == 'bottomquarter':
-        idx = np.asarray([(x > 0.75) for (x,y) in centers_of_mass]).nonzero()[0]
-    elif led_loc == 'topquarter':
-        idx = np.asarray([(x < 0.25) for (x,y) in centers_of_mass]).nonzero()[0]
-    elif led_loc == 'topthird':
-        idx = np.asarray([(x < 0.33) for (x,y) in centers_of_mass]).nonzero()[0]
-    elif led_loc == 'rightquarter':
-        idx = np.asarray([(y > 0.75) for (x,y) in centers_of_mass]).nonzero()[0]
-    elif led_loc == 'leftquarter':
-        idx = np.asarray([(y < 0.25) for (x,y) in centers_of_mass]).nonzero()[0]
-    else:
-        RuntimeError('led_loc not recognized')
-    
-    if exclude_center:
-        idx = np.asarray([ (((y > 0.6) or (y < 0.4)) or ((x > 0.6) or (x < 0.4))) for (x,y) in centers_of_mass]).nonzero()[0]
 
-    # Add back one to account for background. Ie, if 3rd center of mass was in correct loc, this corresponds to label 4 in labeled_leds
-    idx = idx+1
-    
-    # Remove non-LED labels
-    labeled_led_img[~np.isin(labeled_led_img, idx)] = 0
-    
+    if led_loc is not None:
+        centers_of_mass = ndi.measurements.center_of_mass(filled_image, labeled_led_img, range(1, np.unique(labeled_led_img)[-1] + 1))  # exclude 0, which is background
+        centers_of_mass = [(x/filled_image.shape[0], y/filled_image.shape[1]) for (x,y) in centers_of_mass]  # normalize
+        # Imshow orientation: x is the vertical axis of the image and runs top to bottom; y is horizontal and runs left to right. (0,0 is top-left)
+        if led_loc == 'topright':
+            idx = np.asarray([((x < 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'topleft':
+            idx = np.asarray([((x < 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'bottomleft':
+            idx = np.asarray([((x > 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'bottomright':
+            idx = np.asarray([((x > 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'bottomquarter':
+            idx = np.asarray([(x > 0.75) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'topquarter':
+            idx = np.asarray([(x < 0.25) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'topthird':
+            idx = np.asarray([(x < 0.33) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'rightquarter':
+            idx = np.asarray([(y > 0.75) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'leftquarter':
+            idx = np.asarray([(y < 0.25) for (x,y) in centers_of_mass]).nonzero()[0]
+        else:
+            ValueError('led_loc not recognized')
+        
+        # Add back one to account for background. Ie, if 3rd center of mass was in correct loc, this corresponds to label 4 in labeled_leds
+        idx = idx+1
+        
+        # Remove non-LED labels
+        labeled_led_img[~np.isin(labeled_led_img, idx)] = 0
+        
+        # Relabel 
     # Relabel 
-    labeled_led_img = relabel_labeled_leds(labeled_led_img)
+        # Relabel 
+        labeled_led_img = relabel_labeled_leds(labeled_led_img)
+
+    # Repeat for center if needed
+    if exclude_center:
+        centers_of_mass = ndi.measurements.center_of_mass(filled_image, labeled_led_img, range(1, np.unique(labeled_led_img)[-1] + 1))  # exclude 0, which is background
+        centers_of_mass = [(x/filled_image.shape[0], y/filled_image.shape[1]) for (x,y) in centers_of_mass]  # normalize
+        idx = np.asarray([ (((y > 0.6) or (y < 0.4)) or ((x > 0.6) or (x < 0.4))) for (x,y) in centers_of_mass]).nonzero()[0]
+        idx = idx+1
+        labeled_led_img[~np.isin(labeled_led_img, idx)] = 0
+        labeled_led_img = relabel_labeled_leds(labeled_led_img)
 
     return labeled_led_img
 
