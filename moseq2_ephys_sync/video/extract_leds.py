@@ -166,8 +166,6 @@ def clean_by_location(filled_image, labeled_led_img, led_loc, exclude_center):
         labeled_led_img[~np.isin(labeled_led_img, idx)] = 0
         
         # Relabel 
-    # Relabel 
-        # Relabel 
         labeled_led_img = relabel_labeled_leds(labeled_led_img)
 
     # Repeat for center if needed
@@ -232,7 +230,7 @@ def get_roi_sorting(labeled_led_img, led_labels, sort_by=None):
     
     return sorting
 
-def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_img, led_labels, sorting, movie_type, led_blink_interval):
+def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_img, led_labels, sorting, movie_type, led_blink_interval, debug=False):
     leds = []  # List to hold events by frame
     xy_vals = [  # x/y indices for each LED
                 (
@@ -250,9 +248,40 @@ def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_im
 
     for iLed in range(len(sorting)):
         led = led_vals[:, iLed]
-        led_on_thresh = threshold_otsu(led)  
-        led_event_thresh = 0
+
+        # Check for case where LED is just ON or OFF the entire time, in which case, no events and move on.
+        #TODO: make these threshold values adjustable by movie type
+        OFF_ceiling = 10000
+        ON_floor = 45000
+        if np.all(led > OFF_ceiling) or np.all(led < ON_floor):
+            led_vec = np.zeros(led_vals.shape[0])
+            leds.append(led_vec)
+            continue
+
+        # Get threshold for determining if led is ON or OFF.
+        # Usually otsu works fine; in a few edge cases, there is a tri-modal distbn 
+        # with means something like 600, 900, 50000, and it decides to split it at
+        # 600 vs 900/50000, instead of 600/900 vs 50000. So we fix that here by 
+        # moving up the threshold until all the low values are beneath it.
+        # Should have plenty of buffer room since high vals are like 50k.
+        led_on_thresh = threshold_otsu(led)
+        thresh_thresh = 1000  # how close we allow led vals to be to the threshold
+        good_thresh_flag = False
+        while not good_thresh_flag:
+            diffs = (led - led_on_thresh)
+            vals_above_and_close_to_thresh = np.where((diffs < thresh_thresh) & (diffs > 0))[0]
+            if len(vals_above_and_close_to_thresh) == 0:
+                good_thresh_flag = True
+            elif led_on_thresh > 30000:  # implies that it can't find a good separating boundary
+                raise RuntimeError('LED detection failed at thresholding step due to inability to separate low and high LED vals. Check movie quality and values of LED pixels!')
+            else:
+                led_on_thresh = led_on_thresh + 1000
+
+        # With a good threshold in hand, do the actual detection of ON and OFF.
         detection_vals = (led > led_on_thresh).astype('int')  # 0 or 1 --> diff is -1 or 1
+
+        # Turn ON/OFF strings into events.
+        led_event_thresh = 0
         led_on = np.where(np.diff(detection_vals) > led_event_thresh)[0]   #rise indices
         led_off = np.where(np.diff(detection_vals) < (-1*led_event_thresh))[0]   #fall indices
         led_vec = np.zeros(led_vals.shape[0])
@@ -262,14 +291,18 @@ def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_im
     
     leds = np.vstack(leds) # (nLEDs x nFrames), spiky differenced signals to extract times   
 
-    # check for weirdness (ie an led was on or off the entire time and it detected wayy too many events)
+    # Check for cases where an led was on or off the entire time and it detected wayy too many events.
+    # Should mostly not happen anymore due to check above.
     ev_counts = np.sum(leds!=0, axis=1)
     ev_count_max = leds.shape[1] / vid_io.get_vid_fps(ir_path) / led_blink_interval
     for row in range(leds.shape[0]):    
         if ev_counts[row] > (ev_count_max*2):  # give some buffer
             leds[row,:] = 0
 
-    return leds
+    if debug:
+        return led_vals, leds
+    else:
+        return leds
 
 def extract_roi_events(labeled_led_img, led_labels, sorting, frame_data_chunk, movie_type):
     
@@ -488,6 +521,12 @@ def get_events(leds, timestamps):
     Inputs:
         leds(np.array): num leds x num frames
         timestamps (np.array): 1 x num frames
+
+    Returns: events array where:
+        events[:,0] = event times
+        events[:,1] = event channels
+        events[:,2] = event directions
+        events[:,3] = event idx in original data
     """
     ## e.g. [123,1,-1  ] time was 123rd frame, channel 1 changed from on to off... 
 
