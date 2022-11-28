@@ -41,7 +41,7 @@ def net_frame_std_parallel(ir_path, save_path, frame_chunksize=1000, overwrite_e
 
     # Prep for parallel proc
     nframes = vid_io.count_frames(ir_path)
-    batch_seq = vid_util.gen_batch_sequence(nframes, frame_chunksize, 0)
+    batch_seq = vid_util.make_batch_sequence(nframes, frame_chunksize, 0)
     out_path = join(save_path, 'batch_variances')
     if not exists(out_path):
         os.makedirs(out_path)
