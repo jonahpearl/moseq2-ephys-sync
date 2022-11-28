@@ -61,19 +61,29 @@ def net_frame_std_parallel(ir_path, save_path, frame_chunksize=1000, overwrite_e
 def extract_led_events_parallel(ir_path, save_path, frame_chunksize, labeled_led_img, led_labels, led_sorting, led_blink_interval, overwrite_extraction=False):
     # Prep for parallel proc
     nframes = vid_io.count_frames(ir_path)
-    batch_seq = vid_util.gen_batch_sequence(nframes, frame_chunksize, 0)
+    overlap = int(frame_chunksize/5)  # overlap the chunks a bit to avoid boundary errors
+    batch_seq = vid_util.make_batch_sequence(nframes, frame_chunksize, overlap)
     reporter_vals = (None for i in range(len(batch_seq)))
     out_path = join(save_path, 'avi_led_signals.npy')
     if exists(out_path) and not overwrite_extraction:
         led_signals = np.load(out_path)
         return led_signals
     
-    # Do the parallel proc
+    # Do the parallel proc. led_signals is a list of nbatches x ((nLEDs x nFrames) arrays)
     led_signals = process_map(extract_leds.batch_roi_event_extractor, batch_seq, repeat(ir_path), reporter_vals, repeat(labeled_led_img), repeat(led_labels), repeat(led_sorting), repeat('avi'), repeat(led_blink_interval), chunksize=1)
-    led_signals = np.concatenate(led_signals, axis=1)
-    np.save(out_path, led_signals)
 
-    return led_signals
+    # Concat signals across batches: old way, with 0 overlap
+    # led_signals = np.concatenate(led_signals, axis=1)
+
+    # Concat signals across batches: new way, with overlap
+    concat_led_signals = np.zeros((len(led_labels), nframes))
+    for i in range(len(led_labels)):
+        for iBatch, batch in enumerate(batch_seq):
+            concat_led_signals[i, batch] = np.clip(concat_led_signals[i, batch] + led_signals[iBatch][i,:], -1, 1)
+
+    np.save(out_path, concat_led_signals)
+
+    return concat_led_signals
 
 def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_interval=5, leds_to_use=None, led_loc=None, exclude_center=False, manual_reverse=False, avi_chunk_size=1000, source_timescale_factor_log10=None, overwrite_extraction=False):
 
@@ -440,7 +450,7 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, led_loc,
     ############### Cycle through the frame chunks to get all LED events: ###############
     
     # Prepare to load video (use frame batches)
-    frame_batches = vid_util.gen_batch_sequence(num_frames, basler_chunk_size, 0, offset=0)
+    frame_batches = vid_util.make_batch_sequence(num_frames, basler_chunk_size, 0, offset=0)
     num_chunks = len(frame_batches)
     basler_led_events = []
     if led_rois_from_file:
