@@ -206,6 +206,14 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
     avi_led_codes = np.asarray(avi_led_codes)
     print('Converted.')
 
+    # Check for duplicate codes which will mess up the sync matching.
+    # These can arise at boundaries of frame batches, eg codes go: A B | C B D E F...
+    # and "C" is missed due to the boundary, so the resulting sequence is ABBDEF...
+    dupe_idx = np.where(np.diff(avi_led_codes[:,1])==0)[0]
+    if len(dupe_idx) > 0:
+        avi_led_codes = avi_led_codes[~np.isin(np.arange(avi_led_codes.shape[0]), dupe_idx)]
+        print(f'Removed {len(dupe_idx)} duplicate codes at indices {dupe_idx}')
+        
     return avi_led_codes, timestamps
 
 
