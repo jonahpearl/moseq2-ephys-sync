@@ -67,7 +67,9 @@ def find_file_through_glob_and_symlink(path, pattern, exclude_patterns=None):
         files = [f for f in files if not any([pattern in f for pattern in exclude_patterns])]
 
     # Sanitize output
-    assert len(files) > 0, 'Found no files matching pattern'
-    assert len(files) == 1, 'Found more than one file matching pattern!'
+    if len(files) == 0: 
+        raise NoMatchingFilesError(f'Found no files in {path} matching pattern {pattern}')
+    elif len(files) > 1:
+        raise GreaterThanOneMatchingFileError(f'Found multiple files in {path} matching pattern {pattern}')
 
     return files[0]

@@ -457,7 +457,12 @@ def basler_bonsai_workflow(base_path,
     if source_timescale_factor_log10 is None:
         source_timescale_factor_log10 = 9
 
-    txt_data = load_arduino_data(base_path, file_glob=file_glob)
+    try:
+        txt_data = load_arduino_data(base_path, file_glob=file_glob)
+    except moseq2_ephys_sync.util.GreaterThanOneMatchingFileError:
+        # try to exclude some common DLC strings
+        txt_data = load_arduino_data(base_path, file_glob=file_glob, patterns_to_exclude=['resnet', 'shuffle'])
+
     # these are in NANOseconds, convert to seconds
     bonsai_timestamps = txt_data.time / (10**source_timescale_factor_log10)
 
