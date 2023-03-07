@@ -84,8 +84,9 @@ def relabel_labeled_leds(labeled_led_img):
             labeled_led_img[labeled_led_img == val] = i
     return labeled_led_img
 
-def extract_initial_labeled_image(frame_input, movie_type):
-    """Use std (usually) of frames and otsu thresholding to extract LED positions
+def extract_initial_labeled_image(frame_input, movie_type, num_leds):
+    """Use std (usually) of frames and otsu thresholding to extract LED positions.
+    Try to return at least num_leds candidates, because the rest of the script prunes bad ROIs (as opposed to finding missed ROIs).
     movie_type:
     """
     
@@ -98,29 +99,34 @@ def extract_initial_labeled_image(frame_input, movie_type):
     else:
         raise ValueError(f'Expected frame input of dim 2 or 3 but got ndim {frame_input.ndim}')
     
-    # Get threshold for LEDs
+    # Get threshold for LEDs, then mask img and get led regions
+
     if movie_type == 'mkv':
         thresh = threshold_otsu(vary_px)
-    elif movie_type == 'avi' or movie_type == 'basler':
-        thresh = threshold_multiotsu(vary_px,5)[-1]  # take highest threshold from multiple
-    
-    # Get mask
-    if movie_type == 'mkv' or movie_type == 'avi':
         thresh_px = np.copy(vary_px)
         thresh_px[thresh_px<thresh] = 0
-        
-        # Initial regions from mask
         edges = canny(thresh_px/255.) ## find the edges
         filled_image = ndi.binary_fill_holes(edges) ## fill its edges
         labeled_led_img, num_features = ndi.label(filled_image) ## get the clusters
-    
+
+    elif movie_type == 'avi':
+        num_features = 0
+        ii = 0  # start with the largest val from multiotsu, then go smaller if needed to get at least num_leds ROIs
+        while num_features < num_leds:
+            ii -= 1
+            thresh = threshold_multiotsu(vary_px,5)[ii] 
+            thresh_px = np.copy(vary_px)
+            thresh_px[thresh_px<thresh] = 0
+            edges = canny(thresh_px/255.) ## find the edges
+            filled_image = ndi.binary_fill_holes(edges) ## fill its edges
+            labeled_led_img, num_features = ndi.label(filled_image) ## get the clusters
+
     elif movie_type == 'basler':
+        thresh = threshold_multiotsu(vary_px,5)[-1]  # take highest threshold from multiple
         thresh_px = np.copy(vary_px)
         thresh_px = (thresh_px > thresh)
         thresh_px = binary_erosion(thresh_px, disk(5))  # separate LEDs
         thresh_px = binary_dilation(thresh_px)  # fix ragged edges
-
-        # Initial regions from mask
         edges = canny(thresh_px) ## find the edges
         filled_image = ndi.binary_fill_holes(edges) ## fill its edges
         labeled_led_img, num_features = ndi.label(filled_image) ## get the clusters
