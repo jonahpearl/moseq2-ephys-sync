@@ -152,6 +152,7 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
     mwCodes = np.array(mwCodes)
     mwIdx = np.array(mwIdx)
 
+
     # remove all duplicate audioCodes?
     if remove_duplicates:
         dels = np.where(np.diff(auCodes) == 0)[0] + 1
@@ -172,13 +173,13 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
     auI = -1
     matches = []
     for mwI in range(len(mwCodes)):
-        matchFound = False
+        # matchFound = False
         code = mwCodes[mwI]
         for aui in lookup[code][np.where(lookup[code] > auI)[0]]:
             if match_test(auCodes[aui:], mwCodes[mwI:], minMatch, maxErr) and\
                     (auCodes[aui] == mwCodes[mwI]):
                 matches.append((auTimes[aui], mwTimes[mwI], auIdx[aui], mwIdx[mwI]))
-                offset = auTimes[aui] - mwTimes[mwI]
+                # offset = auTimes[aui] - mwTimes[mwI]
                 auI = aui
                 break
         # warn that code wasn't found?
