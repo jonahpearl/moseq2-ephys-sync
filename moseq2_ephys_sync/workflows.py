@@ -6,9 +6,12 @@ from glob import glob
 import joblib
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
+import warnings
 
 from moseq2_ephys_sync import sync, viz, util, workflows
 from moseq2_ephys_sync.video import vid_workflows
+# from moseq2_ephys_sync.util import GreaterThanOneMatchingFileError, NoMatchingFilesError
+import moseq2_ephys_sync
 
 import pdb
 
@@ -287,12 +290,12 @@ def main_function(base_path,
 
     # Sanity check on timestamps being in seconds
     first_source_full_timestamps = np.array(first_source_full_timestamps)
-    assert (first_source_full_timestamps[-1] - first_source_full_timestamps[0]
-            ) < 7200, f"Your timestamps for {first_source} appear to span more than two hours...are you sure the timestamps are in seconds?"
+    if (first_source_full_timestamps[-1] - first_source_full_timestamps[0]) > 7200:
+         warnings.warn(f"Your timestamps for {first_source} appear to span more than two hours...are you sure the timestamps are in seconds?")
 
     second_source_full_timestamps = np.array(second_source_full_timestamps)
-    assert (second_source_full_timestamps[-1] - second_source_full_timestamps[0]
-            ) < 7200, f"Your timestamps for {second_source} appear to span more than two hours...are you sure the timestamps are in seconds?"
+    if (second_source_full_timestamps[-1] - second_source_full_timestamps[0]) > 7200:
+        warnings.warn(f"Your timestamps for {second_source} appear to span more than two hours...are you sure the timestamps are in seconds?")
 
     # Save the codes for use later
     if not pytesting:
