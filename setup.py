@@ -36,4 +36,5 @@ setup(
     packages=find_packages(),
     package_data={},
     install_requires=install_requires,
+    entry_points={'console_scripts': ['moseq2_ephys_sync = moseq2_ephys_sync.cli:main']}
 )

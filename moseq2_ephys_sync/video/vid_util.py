@@ -1,10 +1,88 @@
-'''
-Tools for extracting info, timestamps, and frames from mkv files
-'''
-import os
-import subprocess
+from datetime import time
 import numpy as np
+import pandas as pd
+import sys,os
+from tqdm import tqdm
+from glob import glob
+import joblib
+import argparse
+import pickle
 
+import decord
+from skimage import color
+from cv2 import resize
+
+import moseq2_ephys_sync.video.extract_leds
+
+## Variance alg utils
+def update_running_var(existingAggregate, newValue):
+    """Welford's algorithm for calculating variance in a single pass: https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+
+    Arguments:
+        existingAggregate {[type]} -- [description]
+        newValue {[type]} -- [description]
+
+    Returns:
+        [type] -- [description]
+    """
+    (count, mean, M2) = existingAggregate
+    count += 1
+    delta = newValue - mean
+    mean += delta / count
+    delta2 = newValue - mean
+    M2 += delta * delta2
+    return (count, mean, M2)
+
+def finalize_running_var(existingAggregate):
+    (count, mean, M2) = existingAggregate
+    if count < 2:
+        return float("nan")
+    else:
+        (mean, variance) = (mean, M2 / count)
+        return (mean, variance)
+
+def downsample_frames(frame_data_chunk, downsample=2):
+    new_shape = (int(frame_data_chunk.shape[1]/downsample), int(frame_data_chunk.shape[2]/downsample))
+    new_frames = np.zeros((frame_data_chunk.shape[0], *new_shape), dtype='uint8')
+    for iFrame,im in enumerate(np.arange(frame_data_chunk.shape[0])):
+        new_frames[iFrame,:,:] = resize(frame_data_chunk[iFrame,:,:], new_shape[::-1])  # cv2 expects WH, decord (and everyone else) uses HW, hence ::-1
+    return new_frames
+
+## General utils
+def load_led_rois_from_file(base_path):
+    fin = os.path.join(base_path, 'led_rois.pickle')
+    with open(fin, 'rb') as f:
+        led_roi_dict = pickle.load(f)
+    led_roi_list = led_roi_dict['roi_list']
+    diff_thresholds = led_roi_dict['thresholds']
+    return diff_thresholds, led_roi_list
+
+
+def make_batch_sequence(nframes, chunk_size, overlap, offset=0):
+    '''
+    Generates batches used to chunk videos prior to extraction.
+
+    Parameters
+    ----------
+    nframes (int): total number of frames
+    chunk_size (int): desired chunk size
+    overlap (int): number of overlapping frames
+    offset (int): frame offset
+
+    Returns
+    -------
+    Yields list of batches
+    '''
+
+    seq = range(offset, nframes)
+    out = []
+    for i in range(0, len(seq) - overlap, chunk_size - overlap):
+        out.append(seq[i:i + chunk_size])
+    return out
+
+
+
+### MKV HELPER FUNCTIONS ###
 
 def get_mkv_info(fileloc, stream=1):
     stream_features = ["width", "height", "r_frame_rate", "pix_fmt"]
@@ -133,3 +211,14 @@ def get_mkv_stream_tag(fileloc, stream=1, tag="K4A_START_OFFSET_NS"):
         print(err)
     out = out.decode("utf-8").rstrip("\n")
     return out
+
+
+    
+
+# def load_led_rois_from_file(base_path):
+#     """Old versino of load led rois that was used in mkv workflow
+#     """
+#     fin = os.path.join(base_path, 'led_rois.pickle')
+#     with open(fin, 'rb') as f:
+#         led_roi_list = pickle.load(f, pickle.HIGHEST_PROTOCOL)
+#     return led_roi_list

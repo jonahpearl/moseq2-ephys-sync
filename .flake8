@@ -1,0 +1,6 @@
+[flake8]
+max_line_length = 120
+extend-ignore =
+    F401,  # F401: imported but unused
+    F541,  # F541: f-string is missing placeholders
+    E731,  # E731: use def instead of lambda
