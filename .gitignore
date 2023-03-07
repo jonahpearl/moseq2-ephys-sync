@@ -5,6 +5,8 @@ debugImgs/rpi_minus_oe_diffs.tiff
 build
 dist
 *.egg-info
+test_data
+*.p
 *.png
 test_data
 *.p
