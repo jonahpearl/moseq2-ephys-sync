@@ -7,6 +7,15 @@ from warnings import warn
 from moseq2_ephys_sync.workflows import get_valid_source_abbrevs
 
 
+class GreaterThanOneMatchingFileError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+class NoMatchingFilesError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
+
 def verify_sources(first_source, second_source):
     if exists(first_source):
         first_source_name = os.path.splitext(os.path.basename(first_source))[0]
