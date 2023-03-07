@@ -41,6 +41,9 @@ def net_frame_std_parallel(ir_path, save_path, frame_chunksize=1000, overwrite_e
 
     # Prep for parallel proc
     nframes = vid_io.count_frames(ir_path)
+    if  nframes % frame_chunksize < 5:
+        # avoid having tiny batches at the end, messes up pyav
+        nframes = int(np.rint(nframes / frame_chunksize)*frame_chunksize) # round to nearest int number of chunks
     batch_seq = vid_util.make_batch_sequence(nframes, frame_chunksize, 0)
     out_path = join(save_path, 'batch_variances')
     if not exists(out_path):
