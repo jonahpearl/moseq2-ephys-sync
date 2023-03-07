@@ -117,11 +117,13 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
     else:
         # Get the std across all frames
         print('Getting frame std')
+        
         net_std = net_frame_std_parallel(ir_path, save_path, frame_chunksize=avi_chunk_size, overwrite_extraction=overwrite_extraction)
 
         # Extract LEDs from the net variance image
         # NB: this strategy will fail if the LEDs move during the session! In that case, need to treat each batch separately.
-        num_features, filled_image, labeled_led_img = extract_leds.extract_initial_labeled_image(net_std, 'avi')
+        num_features, filled_image, labeled_led_img = extract_leds.extract_initial_labeled_image(net_std, 'avi', num_leds)
+        print(f'Initially extracted {num_features} features...')
 
         # If too many features, check for location parameter and filter by it
         if (num_features > num_leds) and (led_loc or exclude_center):
@@ -234,8 +236,8 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
 
     
     # Set up paths
-    ir_path = util.find_file_through_glob_and_symlink(base_path, '*ir.avi')
-    timestamp_path = util.find_file_through_glob_and_symlink(base_path, '*device_timestamps.npy')
+    ir_path = util.find_file_through_glob_and_symlink(base_path, '*top.ir.avi')
+    timestamp_path = util.find_file_through_glob_and_symlink(base_path, '*top.device_timestamps.npy')
     
     # Load timestamps
     timestamps = np.load(timestamp_path)
