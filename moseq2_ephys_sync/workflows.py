@@ -558,8 +558,10 @@ def list_to_events(time_list, led_states, tskip):
         events_idx = events_idx[~np.isin(events_idx, skip_list)]
         times = times.append(pd.Series(time_list[events_idx], name='times'), ignore_index=True)
         channels = channels.append(pd.Series(np.repeat(i, len(events_idx)), name='channels'), ignore_index=True)
-        directions = directions.append(pd.Series(np.sign(diffs[events_idx-1]), name='directions'), ignore_index=True)
-        events_idx_all = events_idx_all.append(pd.Series(events_idx, name='index'), ignore_index=True)
+        # directions = directions.append(pd.Series(np.sign(diffs[events_idx-1]), name='directions'), ignore_index=True)
+        # events_idx_all = events_idx_all.append(pd.Series(events_idx, name='index'), ignore_index=True)
+        directions = pd.concat([directions, pd.Series(np.sign(diffs[events_idx-1]), name='directions')], ignore_index=True)
+        events_idx_all = pd.concat([events_idx_all, pd.Series(events_idx, name='index')], ignore_index=True)
     events = pd.concat([times, channels, directions, events_idx_all], axis=1)
     sorting = np.argsort(events.loc[:, 'times'])
     events = events.loc[sorting, :]
