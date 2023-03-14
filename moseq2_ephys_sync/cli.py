@@ -26,6 +26,7 @@ VALID_SOURCE_ABBREVS = ['oe', 'mkv', 'arduino', 'txt', 'csv', 'basler', 'basler_
 @click.option('--overwrite-models', is_flag=True)
 @click.option('--overwrite-extraction', is_flag=True)
 @click.option('--leds-to-use', type=str, default='1234', help='Subset of leds (1-indexed) to use (eg if one was broken) (syntax: --leds_to_use \'1234\'')
+@click.option('--exclude-only-off-events', is_flag=True, default=False, help="If true, do not consider events where LEDs only turned off (can be 1 frame delayed in videos due to hardware issues).")
 @click.option('--predict-full-timestamps-of-source', '-r', multiple=True, default=None, help='Choose which sources (1, 2, or both) to predict full list of times for (syntax: -r 1 -r 2 --next_arg')
 @click.option('--pytesting', is_flag=True, help='If true, return matches and dont actually make the syncing models')
 def main(input_path=None,
@@ -44,6 +45,7 @@ def main(input_path=None,
          overwrite_models=False,
          overwrite_extraction=False,
          leds_to_use='1234',
+         exclude_only_off_events=False,
          predict_full_timestamps_of_source=None,
          pytesting=False):
 
@@ -76,6 +78,7 @@ def main(input_path=None,
                                 overwrite_models=overwrite_models,
                                 overwrite_extraction=overwrite_extraction,
                                 leds_to_use=leds_to_use,
+                                exclude_only_off_events=exclude_only_off_events,
                                 sources_to_predict=predict_full_timestamps_of_source,
                                 pytesting=pytesting)
 

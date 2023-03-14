@@ -192,6 +192,7 @@ def main_function(base_path,
                   overwrite_models=False,
                   overwrite_extraction=False,
                   leds_to_use=[1, 2, 3, 4],
+                  exclude_only_off_events=False,
                   sources_to_predict=None,
                   pytesting=False):
     """
@@ -312,13 +313,33 @@ def main_function(base_path,
 
     # SYNCING
     print('Syncing the two sources...')
+    
+    # Mask out any user-instructed bad codes
+    code_masks = []
+    for codes in [first_source_led_codes[:, 1], second_source_led_codes[:, 1]]:
+        if exclude_only_off_events:
+            prev_state = '0000'
+            mask = np.zeros(len(codes), dtype='bool')
+            for iCode, code in enumerate(codes):
+                state = sync.code_to_state(int(code))
+                changes = [int(new) - int(old) for new,old in zip(state, prev_state)]  # 1 means LED turned on, 0 means stayed same, -1 means turned off. Could get this from the events list earlier on, but this is easier...
+                if not any([c==1 for c in changes]):
+                    mask[iCode] = False
+                else:
+                    mask[iCode] = True
+                prev_state = state
+        else:
+            mask = np.ones(len(codes), dtype='bool')
+        
+        code_masks.append(mask)
+
     # Returns two columns of matched event times. All times must be in seconds by here
-    matches = np.asarray(sync.match_codes(first_source_led_codes[:, 0],
-                                          first_source_led_codes[:, 1],
-                                          first_source_led_codes[:, 3],
-                                          second_source_led_codes[:, 0],
-                                          second_source_led_codes[:, 1],
-                                          second_source_led_codes[:, 3],
+    matches = np.asarray(sync.match_codes(first_source_led_codes[code_masks[0], 0],
+                                          first_source_led_codes[code_masks[0], 1],
+                                          first_source_led_codes[code_masks[0], 3],
+                                          second_source_led_codes[code_masks[1], 0],
+                                          second_source_led_codes[code_masks[1], 1],
+                                          second_source_led_codes[code_masks[1], 3],
                                           minMatch=10, maxErr=0, remove_duplicates=True))
     fname = join(save_path, 'matches.npy')
     if not exists(fname) or overwrite_models:
