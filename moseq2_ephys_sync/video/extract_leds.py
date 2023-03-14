@@ -288,8 +288,8 @@ def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_im
 
         # Turn ON/OFF strings into events.
         led_event_thresh = 0
-        led_on = np.where(np.diff(detection_vals) > led_event_thresh)[0]   #rise indices
-        led_off = np.where(np.diff(detection_vals) < (-1*led_event_thresh))[0]   #fall indices
+        led_on = np.where(np.diff(detection_vals) > led_event_thresh)[0] + 1   #rise indices
+        led_off = np.where(np.diff(detection_vals) < (-1*led_event_thresh))[0] + 1  #fall indices
         led_vec = np.zeros(led_vals.shape[0])
         led_vec[led_on] = 1
         led_vec[led_off] = -1

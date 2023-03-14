@@ -161,6 +161,7 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
             # and leds[sorting[0]] is the sequence of ONs and OFFs for that LED.
         sorting = extract_leds.get_roi_sorting(labeled_led_img, led_labels)
 
+        ## EXTRACTION HAPPENS HERE ## 
         # This is where the magic happens! Extract LED on/off info for each frame.
         leds = extract_led_events_parallel(ir_path, save_path, avi_chunk_size, labeled_led_img, led_labels, sorting, led_blink_interval, overwrite_extraction=overwrite_extraction)
 

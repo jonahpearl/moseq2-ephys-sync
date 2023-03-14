@@ -153,10 +153,12 @@ def sync_two_sources(matches,
 
         # Save
         fname = join(save_path, f'{outname}.p')
+        np_fname = join(save_path, f'{outname}_residuals.npz')
         if exists(fname) and not overwrite_models:
             print(f'Model that predicts {n1} from {n2} already exists, not saving...')
         else:
             joblib.dump(mdl, fname)
+            np.savez(np_fname, timestamps=s1, residuals=time_errors)
             print(f'Saved model that predicts {n1} from {n2} to {fname}')
 
         # Compute and save the full synced timestamps.
@@ -190,6 +192,7 @@ def main_function(base_path,
                   overwrite_models=False,
                   overwrite_extraction=False,
                   leds_to_use=[1, 2, 3, 4],
+                  exclude_only_off_events=False,
                   sources_to_predict=None,
                   pytesting=False):
     """
@@ -310,14 +313,37 @@ def main_function(base_path,
 
     # SYNCING
     print('Syncing the two sources...')
+    
+    # Mask out any user-instructed bad codes
+    code_masks = []
+    for codes in [first_source_led_codes[:, 1], second_source_led_codes[:, 1]]:
+        if exclude_only_off_events:
+            prev_state = '0000'
+            mask = np.zeros(len(codes), dtype='bool')
+            for iCode, code in enumerate(codes):
+                state = sync.code_to_state(int(code))
+                changes = [int(new) - int(old) for new,old in zip(state, prev_state)]  # 1 means LED turned on, 0 means stayed same, -1 means turned off. Could get this from the events list earlier on, but this is easier...
+                if not any([c==1 for c in changes]):
+                    mask[iCode] = False
+                else:
+                    mask[iCode] = True
+                prev_state = state
+        else:
+            mask = np.ones(len(codes), dtype='bool')
+        
+        code_masks.append(mask)
+
     # Returns two columns of matched event times. All times must be in seconds by here
-    matches = np.asarray(sync.match_codes(first_source_led_codes[:, 0],
-                                          first_source_led_codes[:, 1],
-                                          first_source_led_codes[:, 3],
-                                          second_source_led_codes[:, 0],
-                                          second_source_led_codes[:, 1],
-                                          second_source_led_codes[:, 3],
+    matches = np.asarray(sync.match_codes(first_source_led_codes[code_masks[0], 0],
+                                          first_source_led_codes[code_masks[0], 1],
+                                          first_source_led_codes[code_masks[0], 3],
+                                          second_source_led_codes[code_masks[1], 0],
+                                          second_source_led_codes[code_masks[1], 1],
+                                          second_source_led_codes[code_masks[1], 3],
                                           minMatch=10, maxErr=0, remove_duplicates=True))
+    fname = join(save_path, 'matches.npy')
+    if not exists(fname) or overwrite_models:
+        np.save(fname, matches)
 
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 
@@ -558,8 +584,10 @@ def list_to_events(time_list, led_states, tskip):
         events_idx = events_idx[~np.isin(events_idx, skip_list)]
         times = times.append(pd.Series(time_list[events_idx], name='times'), ignore_index=True)
         channels = channels.append(pd.Series(np.repeat(i, len(events_idx)), name='channels'), ignore_index=True)
-        directions = directions.append(pd.Series(np.sign(diffs[events_idx-1]), name='directions'), ignore_index=True)
-        events_idx_all = events_idx_all.append(pd.Series(events_idx, name='index'), ignore_index=True)
+        # directions = directions.append(pd.Series(np.sign(diffs[events_idx-1]), name='directions'), ignore_index=True)
+        # events_idx_all = events_idx_all.append(pd.Series(events_idx, name='index'), ignore_index=True)
+        directions = pd.concat([directions, pd.Series(np.sign(diffs[events_idx-1]), name='directions')], ignore_index=True)
+        events_idx_all = pd.concat([events_idx_all, pd.Series(events_idx, name='index')], ignore_index=True)
     events = pd.concat([times, channels, directions, events_idx_all], axis=1)
     sorting = np.argsort(events.loc[:, 'times'])
     events = events.loc[sorting, :]
