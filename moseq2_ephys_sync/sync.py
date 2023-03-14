@@ -97,7 +97,10 @@ def events_to_codes(events, nchannels, minCodeTime):  # swap_12_codes = 1,swap_0
 
 def state_to_code(state):
     """
-    Convert a pixel clock state list to a code
+    Convert a pixel clock state list to a code.
+    Unlike binary, this is read increasing left to right:
+        1000 --> 1
+        0001 --> 8
 
     Parameters
     ----------
@@ -112,6 +115,13 @@ def state_to_code(state):
     """
     return sum([state[i] << i for i in range(len(state))])  # << = bit shift operator
 
+def code_to_state(code):
+    """Convert an integer code into the LED state it came from
+
+    Arguments:
+        code {int} -- 
+    """
+    return format(code, '04b')[::-1]
 
 def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, maxErr=0, remove_duplicates=0):
     """
