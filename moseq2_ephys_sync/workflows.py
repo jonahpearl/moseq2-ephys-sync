@@ -153,10 +153,12 @@ def sync_two_sources(matches,
 
         # Save
         fname = join(save_path, f'{outname}.p')
+        np_fname = join(save_path, f'{outname}_residuals.npz')
         if exists(fname) and not overwrite_models:
             print(f'Model that predicts {n1} from {n2} already exists, not saving...')
         else:
             joblib.dump(mdl, fname)
+            np.savez(np_fname, timestamps=s1, residuals=time_errors)
             print(f'Saved model that predicts {n1} from {n2} to {fname}')
 
         # Compute and save the full synced timestamps.
@@ -318,6 +320,9 @@ def main_function(base_path,
                                           second_source_led_codes[:, 1],
                                           second_source_led_codes[:, 3],
                                           minMatch=10, maxErr=0, remove_duplicates=True))
+    fname = join(save_path, 'matches.npy')
+    if not exists(fname) or overwrite_models:
+        np.save(fname, matches)
 
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 
