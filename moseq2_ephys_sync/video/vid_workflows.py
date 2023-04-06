@@ -135,15 +135,34 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
 
         # If still too many features, remove small ones
         if (num_features > num_leds):
-            print('Oops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
+            print('Number of features (%d) did not match the number of LEDs (%d), using sized-based cleaning' % (num_features,num_leds))
             labeled_led_img = extract_leds.clean_by_size(labeled_led_img, lower_size_thresh=20, upper_size_thresh=100)
-        
-        # Recompute num features (minus 1 for background)
+        num_features = len(np.unique(labeled_led_img)) - 1
+
+        # If still too many features, remove non-uniform ones (ie little wispy noise strands)
+        if (num_features > num_leds):
+            print('Number of features (%d) did not match the number of LEDs (%d), using uniformity based cleaing' % (num_features,num_leds))
+            labeled_led_img = extract_leds.clean_by_uniformity(labeled_led_img, area_ratio_thresh=0.9)
+        num_features = len(np.unique(labeled_led_img)) - 1
+
+        # If still too many features, remove overly stretched ones (ie little wispy noise strands)
+        if (num_features > num_leds):
+            print('Number of features (%d) did not match the number of LEDs (%d), using ecc-based cleaning' % (num_features,num_leds))
+            labeled_led_img = extract_leds.clean_by_eccentricity(labeled_led_img, ecc_thresh=0.9)
         num_features = len(np.unique(labeled_led_img)) - 1
 
         # Show user a check
         image_to_show = np.copy(labeled_led_img)
         viz.plot_video_frame(image_to_show, 200, join(save_path, 'net_var_led_labels_preEvents.png'))
+
+        # Check for issues with detected number of features
+        if num_features > 4:
+            raise RuntimeError('Oops! Number of features (%d) still > 4 after final cleaning step. Manually investigate!' % (num_features,num_leds))
+        elif (num_features < num_leds):
+            raise RuntimeError('Oops! Number of features (%d) did not match the number of LEDs (%d) after final cleaning step. Try using a subset of the LEDs!' % (num_features,num_leds))
+        elif (num_features > num_leds):
+            print(f'Found {num_features} features but expecting only {num_leds} LEDs -- assuming user is requesting a subset of detected LEDs.')
+            
 
         led_labels = [label for label in np.unique(labeled_led_img) if label > 0 ]
         assert led_labels == sorted(led_labels)  # note that these labels aren't guaranteed only the correct ROIs yet... but the labels should be strictly sorted at this point.
@@ -216,6 +235,11 @@ def avi_parallel_workflow(base_path, save_path, source, num_leds=4, led_blink_in
         events = extract_leds.get_events(leds, timestamps)
         np.save(avi_led_events_path, events)
         print('Successfullly extracted avi leds, converting to codes...')    
+
+    # Remove any LEDs not requested by user
+    events_to_use_mask = np.isin(events[:,1] + 1, np.array(leds_to_use).astype('uint8'))
+    events = events[events_to_use_mask, :]
+    assert len(np.unique(events[:,1])) == num_leds
 
     # Convert events to codes
     avi_led_codes, latencies = sync.events_to_codes(events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))

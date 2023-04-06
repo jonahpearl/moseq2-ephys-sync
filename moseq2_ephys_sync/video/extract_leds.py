@@ -209,6 +209,48 @@ def clean_by_size(labeled_led_img, lower_size_thresh, upper_size_thresh):
 
     return labeled_led_img
 
+
+def clean_by_uniformity(labeled_led_img, area_ratio_thresh=0.9):
+    """Remove ROIs where area of convex bbox is larger than the area of the ROI itself
+    (LEDs should be little round discs st this ratio is ~1)
+    """
+    
+    ## erase ROIs that aren't uniform
+    from skimage.measure import label, regionprops
+    tmp = (labeled_led_img>0).astype('uint8')
+    li = label(tmp)
+    r = regionprops(li)
+    area_ratios = [reg.area/reg.area_convex for reg in r]
+    for reg, ratio in zip(r, area_ratios):
+        if ratio < area_ratio_thresh:
+            labeled_led_img[reg.coords] = 0
+
+    # Relabel 
+    labeled_led_img = relabel_labeled_leds(labeled_led_img)
+
+    return labeled_led_img
+
+
+def clean_by_eccentricity(labeled_led_img, ecc_thresh=0.9):
+    """Remove ROIs where eccentricity is too high (led ecc is usually 0.5 - 0.6)
+    """
+    
+    ## erase ROIs that aren't uniform
+    from skimage.measure import label, regionprops
+    tmp = (labeled_led_img>0).astype('uint8')
+    li = label(tmp)
+    r = regionprops(li)
+    area_eccs = [reg.eccentricity for reg in r]
+    for reg, ecc in zip(r, area_eccs):
+        if ecc > ecc_thresh:
+            labeled_led_img[reg.coords] = 0
+
+    # Relabel 
+    labeled_led_img = relabel_labeled_leds(labeled_led_img)
+
+    return labeled_led_img
+
+
 def get_roi_sorting(labeled_led_img, led_labels, sort_by=None):
     ## get LED x and y positions for sorting
     leds_xs = [np.where(labeled_led_img==i)[1].mean() for i in led_labels] 
@@ -279,7 +321,7 @@ def batch_roi_event_extractor(frame_batch, ir_path, reporter_val, labeled_led_im
             if len(vals_above_and_close_to_thresh) == 0:
                 good_thresh_flag = True
             elif led_on_thresh > 30000:  # implies that it can't find a good separating boundary
-                raise RuntimeError('LED detection failed at thresholding step due to inability to separate low and high LED vals. Check movie quality and values of LED pixels!')
+                raise RuntimeError(f'LED detection failed at thresholding step for LED #{iLed + 1} due to inability to separate low and high LED vals. Check movie quality and values of LED pixels!')
             else:
                 led_on_thresh = led_on_thresh + 1000
 
