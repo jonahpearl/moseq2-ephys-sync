@@ -52,7 +52,7 @@ def main(input_path=None,
     # Parse leds to use
     if ',' in leds_to_use:
         leds_to_use = leds_to_use.replace(',', '')
-    leds_to_use = [str(i) for i in leds_to_use]
+    leds_to_use = [str(i) for i in leds_to_use if (len(i)>0 and i!="'")]
 
     if len(leds_to_use) > 4:
         raise ValueError(f'Expected no more than 4 LEDs but got {len(leds_to_use)} ({leds_to_use})...check that leds_to_use input value is being parsed correctly.')
