@@ -318,6 +318,7 @@ def main_function(base_path,
     code_masks = []
     for codes in [first_source_led_codes[:, 1], second_source_led_codes[:, 1]]:
         if exclude_only_off_events:
+            print('Excluding only-off events...')
             prev_state = '0000'
             mask = np.zeros(len(codes), dtype='bool')
             for iCode, code in enumerate(codes):
