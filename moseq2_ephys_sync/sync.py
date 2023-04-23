@@ -174,10 +174,12 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
         dels = np.where(np.diff(auCodes) == 0)[0] + 1
         auCodes = np.delete(auCodes, dels)
         auTimes = np.delete(auTimes, dels)
+        auIdx = np.delete(auIdx, dels)
 
         dels = np.where(np.diff(mwCodes) == 0)[0] + 1
         mwCodes = np.delete(mwCodes, dels)
         mwTimes = np.delete(mwTimes, dels)
+        mwIdx = np.delete(mwIdx, dels)
 
     # create lookup lists for each audioCode
     codes = np.unique(mwCodes)
