@@ -334,13 +334,19 @@ def main_function(base_path,
         code_masks.append(mask)
 
     # Returns two columns of matched event times. All times must be in seconds by here
+    if len(leds_to_use) < 4:
+        print('Increasing required minMatch length due to fewer LEDs')
+        minMatch = 30
+    else:
+        minMatch = 10
+
     matches = np.asarray(sync.match_codes(first_source_led_codes[code_masks[0], 0],
                                           first_source_led_codes[code_masks[0], 1],
                                           first_source_led_codes[code_masks[0], 3],
                                           second_source_led_codes[code_masks[1], 0],
                                           second_source_led_codes[code_masks[1], 1],
                                           second_source_led_codes[code_masks[1], 3],
-                                          minMatch=10, maxErr=0, remove_duplicates=True))
+                                          minMatch=minMatch, maxErr=0, remove_duplicates=True))
     fname = join(save_path, 'matches.npy')
     if not exists(fname) or overwrite_models:
         np.save(fname, matches)

@@ -5,7 +5,7 @@ import os
 import numpy as np
 import copy
 import pdb
-
+import warnings
 
 def events_to_codes(events, nchannels, minCodeTime):  # swap_12_codes = 1,swap_03_codes=0
     """
@@ -44,6 +44,13 @@ def events_to_codes(events, nchannels, minCodeTime):  # swap_12_codes = 1,swap_0
     # Get initial state by looking at first transitions
     state = []
     for i in range(nchannels):  # was range
+        
+        # Skip this if the LED didn't go on at all (which would almost certainly be caused by a hardware issue)
+        if np.sum(evts[:,1]==i) == 0:
+            warnings.warn(f'No LED events detected in this workflow for led {i}. This is almost certainly a hardware issue and indicates a bad LED / connection. Likely no matches will be found. Re-run the script without this LED!')
+            state.append(0)
+            continue
+
         d = evts[np.where(evts[:, 1] == i)[0][0], 2]
         if d == 1:
             state.append(0)
@@ -161,7 +168,6 @@ def match_codes(auTimes, auCodes, auIdx, mwTimes, mwCodes, mwIdx, minMatch=5, ma
     mwTimes = np.array(mwTimes)
     mwCodes = np.array(mwCodes)
     mwIdx = np.array(mwIdx)
-
 
     # remove all duplicate audioCodes?
     if remove_duplicates:
